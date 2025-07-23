@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        padding: 0 16px 0 16px;
+        color: var(--vscode-foreground);
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+        line-height: 1.6;
+      }
+
+      h2 {
+        font-size: 1em;
+        font-weight: 600;
+        margin: 16x 0 16px 0;
+        color: var(--vscode-foreground);
+        text-transform: uppercase;
+      }
+      
+      .section {
+        margin-top: 20px;
+      }
+
+      .section:first-child {
+        margin-top: 0;
+      }
+
+      .dropdown {
+        background: var(--vscode-dropdown-background);
+        color: var(--vscode-dropdown-foreground);
+        border: 1px solid var(--vscode-dropdown-border);
+        padding: 4px 8px;
+        border-radius: 2px;
+        width: 130px;;
+      }
+
+      .stats-chart {
+        width: 100%;
+        height: 300px;
+        background: var(--vscode-editor-background);
+        border-radius: 4px;
+        margin: 16px 0;
+      }
+
+      .totals-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .equivalence-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .equivalence-box {
+        background: var(--vscode-editor-background);
+        padding: 16px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .equivalence-icon {
+        font-size: 2em;
+        flex-shrink: 0;
+      }
+
+      .equivalence-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .equivalence-value {
+        font-size: 1.3em;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
+      .equivalence-label {
+        font-size: 0.85em;
+        color: var(--vscode-descriptionForeground);
+        line-height: 1.2;
+      }
+
+      .total-box {
+        background: var(--vscode-editor-background);
+        padding: 16px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .total-icon {
+        font-size: 2em;
+        flex-shrink: 0;
+      }
+
+      .total-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .total-value {
+        font-size: 1.3em;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
+      .total-label {
+        font-size: 0.85em;
+        color: var(--vscode-descriptionForeground);
+        line-height: 1.2;
+      }
+
+      .tips-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .tips-list li {
+        margin-bottom: 12px;
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .tips-list li:before {
+        content: "•";
+        margin-right: 8px;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 8px 12px;
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        border: none;
+        border-radius: 2px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .button:hover {
+        background: var(--vscode-button-hoverBackground);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Model Usage Section -->
+    <section class="section">
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <select class="dropdown" id="metricSelect">
+          <option value="energy">Energy usage</option>
+          <option value="gwp">CO2 emissions</option>
+          <option value="tokens">Output tokens</option>
+        </select>
+        <select class="dropdown" id="modelSelect">
+          <option value="all">All models</option>
+        </select>
+        <select class="dropdown" id="periodSelect">
+          <option value="hourly">Last hour</option>
+          <option value="daily" selected>Last day</option>
+          <option value="monthly">Last month</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section class="section">
+      <h2>STATISTICS</h2>
+      <div class="stats-chart">
+        <canvas id="statsChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Totals Section -->
+    <section class="section">
+      <h2>TOTALS</h2>
+      <div class="totals-grid">
+        <div class="total-box">
+          <div class="total-icon">⚡</div>
+          <div class="total-content">
+            <div class="total-value" id="totalEnergy">-</div>
+            <div class="total-label">Energy usage (Wh)</div>
+          </div>
+        </div>
+        <div class="total-box">
+          <div class="total-icon">🌱</div>
+          <div class="total-content">
+            <div class="total-value" id="totalGwp">-</div>
+            <div class="total-label">CO2 emissions (gCO2eq)</div>
+          </div>
+        </div>
+        <div class="total-box">
+          <div class="total-icon">🔤</div>
+          <div class="total-content">
+            <div class="total-value" id="totalTokens">-</div>
+            <div class="total-label">Output tokens</div>
+          </div>
+        </div>
+        <div class="total-box">
+          <div class="total-icon">📊</div>
+          <div class="total-content">
+            <div class="total-value" id="totalCount">-</div>
+            <div class="total-label">Request count</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Equivalence Section -->
+    <section class="section">
+      <h2>EQUIVALENCE</h2>
+      <div class="equivalence-grid" id="equivalenceGrid">
+        <!-- Equivalence items will be dynamically generated here -->
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <section class="section">
+      <div style="text-align: center; color: var(--vscode-descriptionForeground); font-size: 0.85em; padding: 16px 0;">
+        Powered by EcoLogits 🌱
+      </div>
+    </section>
+
+    <script>
+      (function() {
+        // Initialize chart
+        const ctx = document.getElementById('statsChart').getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: [],
+            datasets: []
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            layout: {
+              padding: {
+                left: 10,
+                right: 20,
+                top: 20,
+                bottom: 5
+              }
+            },
+            scales: {
+              x: {
+                stacked: true,
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                  maxRotation: 0,
+                  autoSkip: true,
+                  autoSkipPadding: 10
+                }
+              },
+              y: {
+                stacked: true,
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  boxWidth: 12,
+                  padding: 10
+                }
+              }
+            }
+          }
+        });
+
+        // State management
+        let currentPeriod = 'daily';
+        let currentMetric = 'energy';
+        let currentModel = 'all';
+        let statsData = null;
+        let equivalences = null;
+
+        // Color palette for different models
+        const colors = [
+          'rgb(255, 99, 132)',
+          'rgb(75, 192, 192)',
+          'rgb(255, 205, 86)',
+          'rgb(54, 162, 235)',
+          'rgb(153, 102, 255)'
+        ];
+
+        // Format number with thousand separators
+        function formatNumber(num) {
+          return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // Convert API units to display units
+        function convertUnits(value, metric) {
+          if (metric === 'energy') {
+            // API sends kWh, convert to Wh (multiply by 1,000)
+            return (value * 1000).toFixed(3);
+          } else if (metric === 'gwp') {
+            // API sends kgCO2eq, convert to gCO2eq (multiply by 1,000)
+            return (value * 1000).toFixed(2);
+          }
+          return value;
+        }
+
+        // Convert API units to display units for totals (no decimals for energy and CO2)
+        function convertUnitsForTotals(value, metric) {
+          if (metric === 'energy') {
+            // API sends kWh, convert to Wh (multiply by 1,000), no decimals
+            const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+            return formatter.format(value * 1000);
+          } else if (metric === 'gwp') {
+            // API sends kgCO2eq, convert to gCO2eq (multiply by 1,000), no decimals
+            const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+            return formatter.format(value * 1000);
+          }
+          return value;
+        }
+
+        // Get Y-axis label based on metric
+        function getYAxisLabel(metric) {
+          if (metric === 'energy') return 'Energy (Wh)';
+          if (metric === 'gwp') return 'CO2 emissions (gCO2eq)';
+          if (metric === 'tokens') return 'Output tokens';
+          return '';
+        }
+
+        // Load equivalences configuration
+        function loadEquivalences() {
+          // Use equivalences data injected by the extension
+          if (window.equivalencesData) {
+            equivalences = window.equivalencesData;
+            updateEquivalences();
+          } else {
+            console.error('Equivalences data not found');
+          }
+        }
+
+        // Update equivalences section
+        function updateEquivalences() {
+          if (!statsData || !equivalences) return;
+
+          const equivalenceGrid = document.getElementById('equivalenceGrid');
+          equivalenceGrid.innerHTML = '';
+
+          // Convert total CO2 from gCO2eq to kgCO2eq for calculations
+          const totalCO2kg = statsData.totals.gwp_avg; // API provides kgCO2eq
+
+          // Filter only enabled equivalences
+          const enabledEquivalences = equivalences.filter(equiv => equiv.enabled !== false);
+
+          enabledEquivalences.forEach(equiv => {
+            const equivalentValue = totalCO2kg / equiv.kgCO2eq;
+            
+            const equivalenceBox = document.createElement('div');
+            equivalenceBox.className = 'equivalence-box';
+            
+            // Format the value appropriately
+            let formattedValue;
+            if (equivalentValue < 1) {
+              formattedValue = equivalentValue.toFixed(2);
+            } else if (equivalentValue < 10) {
+              formattedValue = equivalentValue.toFixed(1);
+            } else {
+              const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+              formattedValue = formatter.format(Math.round(equivalentValue));
+            }
+            
+            equivalenceBox.innerHTML = `
+              <div class="equivalence-icon">${equiv.emoji}</div>
+              <div class="equivalence-content">
+                <div class="equivalence-value">${formattedValue}</div>
+                <div class="equivalence-label">${equiv.label}</div>
+              </div>
+            `;
+            
+            equivalenceGrid.appendChild(equivalenceBox);
+          });
+        }
+
+        // Update chart data based on current selections
+        function updateChart() {
+          if (!statsData) return;
+
+          const labels = statsData.aggregates.labels.map(label => {
+            const date = new Date(label);
+            if (currentPeriod === 'hourly') {
+              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else if (currentPeriod === 'daily') {
+              return date.toLocaleTimeString([], { hour: '2-digit' });
+            } else {
+              return date.toLocaleDateString();
+            }
+          });
+
+          const datasets = statsData.aggregates.data.map((modelData, index) => {
+            const metricData = {
+              energy: modelData.data.energy_avg,
+              gwp: modelData.data.gwp_avg,
+              tokens: modelData.data.output_token
+            }[currentMetric];
+
+            // Convert units for display
+            const displayData = currentMetric === 'tokens' 
+              ? metricData 
+              : metricData.map(value => parseFloat(convertUnits(value, currentMetric)));
+
+            return {
+              label: modelData.model_name,
+              data: displayData,
+              backgroundColor: colors[index % colors.length],
+              borderColor: colors[index % colors.length],
+              borderWidth: 1
+            };
+          });
+
+          chart.data.labels = labels;
+          chart.data.datasets = currentModel === 'all' 
+            ? datasets 
+            : datasets.filter(d => d.label === currentModel);
+          
+          // Update Y-axis label
+          chart.options.scales.y.title = {
+            display: true,
+            text: getYAxisLabel(currentMetric)
+          };
+          
+          chart.update();
+        }
+
+        // Update totals section
+        function updateTotals() {
+          if (!statsData) return;
+          
+          const totals = statsData.totals;
+          document.getElementById('totalEnergy').textContent = convertUnitsForTotals(totals.energy_avg, 'energy');
+          document.getElementById('totalGwp').textContent = convertUnitsForTotals(totals.gwp_avg, 'gwp');
+          document.getElementById('totalTokens').textContent = formatNumber(totals.output_token);
+          document.getElementById('totalCount').textContent = formatNumber(totals.count);
+          
+          // Update equivalences when totals are updated
+          updateEquivalences();
+        }
+
+        // Populate model select options
+        function updateModelSelect() {
+          if (!statsData) return;
+
+          const modelSelect = document.getElementById('modelSelect');
+          const currentValue = modelSelect.value;
+          
+          // Clear existing options except "All"
+          while (modelSelect.options.length > 1) {
+            modelSelect.remove(1);
+          }
+
+          // Add model options
+          const models = statsData.aggregates.data.map(d => d.model_name);
+          models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelSelect.appendChild(option);
+          });
+
+          // Restore selection if possible
+          if (models.includes(currentValue)) {
+            modelSelect.value = currentValue;
+          }
+        }
+
+        // Fetch data from API
+        async function fetchData() {
+          try {
+            const response = await fetch(`http://localhost:9999/stats?period=${currentPeriod}`, {
+              mode: 'cors',
+            });
+            statsData = await response.json();
+            updateModelSelect();
+            updateChart();
+            updateTotals();
+            updateEquivalences(); // Update equivalences when new data is fetched
+          } catch (error) {
+            console.error('Error fetching data:', error);
+          }
+        }
+
+        // Event listeners
+        document.getElementById('periodSelect').addEventListener('change', (e) => {
+          currentPeriod = e.target.value;
+          fetchData();
+        });
+
+        document.getElementById('metricSelect').addEventListener('change', (e) => {
+          currentMetric = e.target.value;
+          updateChart();
+        });
+
+        document.getElementById('modelSelect').addEventListener('change', (e) => {
+          currentModel = e.target.value;
+          updateChart();
+        });
+
+        // Initial data fetch
+        loadEquivalences();
+        fetchData();
+
+        // Refresh data every 10 seconds
+        setInterval(fetchData, 10000);
+      })();
+    </script>
+  </body>
+</html>

@@ -17,7 +17,8 @@
 		// Needed for tsx to run test files
 		"paths": {
 			"vscode": ["./src/util/common/test/shims/vscodeTypesShim.ts"]
-		}
+		},
+		"resolveJsonModule": true
 	},
 	"include": [
 		"vscodeTypes.ts",

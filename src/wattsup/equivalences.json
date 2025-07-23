@@ -1,0 +1,44 @@
+[
+  {
+    "label": "km driven in a car",
+    "unit": "km",
+    "emoji": "🚗",
+    "kgCO2eq": 0.249,
+    "enabled": true
+  },
+  {
+    "label": "smartphones charged",
+    "unit": "cycles",
+    "emoji": "📱",
+    "kgCO2eq": 0.0124,
+    "enabled": true
+  },
+  {
+    "label": "min of YouTube streamed",
+    "unit": "min",
+    "emoji": "📺",
+    "kgCO2eq": 0.0006,
+    "enabled": true
+  },
+  {
+    "label": "Paris-NYC flights",
+    "unit": "flights",
+    "emoji": "✈️",
+    "kgCO2eq": 909.6,
+    "enabled": false
+  },
+  {
+    "label": "LED bulb",
+    "unit": "h",
+    "emoji": "💡",
+    "kgCO2eq": 0.00436,
+    "enabled": false
+  },
+  {
+    "label": "km in a bullet train",
+    "unit": "km",
+    "emoji": "🚄",
+    "kgCO2eq": 0.0032,
+    "enabled": true
+  }
+]
