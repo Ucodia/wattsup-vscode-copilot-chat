@@ -26,3 +26,6 @@ assets/walkthroughs/**
 !l10n/bundle.l10n.*.json
 !ThirdPartyNotices.txt
 !LICENSE.txt
+!src/wattsup/wattsupDashboard.html
+!src/wattsup/equivalences.json
+!node_modules/chart.js/dist/chart.umd.js

@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import * as vscode from 'vscode';
 import { IExtensionContribution } from '../extension/common/contributions';
 import { IVSCodeExtensionContext } from '../platform/extContext/common/extensionContext';
@@ -34,13 +33,13 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		webviewView.webview.options = {
 			enableScripts: true,
 			localResourceRoots: [
-				vscode.Uri.file(path.join(this.context.extensionPath, 'node_modules')),
-				vscode.Uri.file(path.join(this.context.extensionPath, 'src'))
+				vscode.Uri.joinPath(this.context.extensionUri, 'node_modules'),
+				vscode.Uri.joinPath(this.context.extensionUri, 'src')
 			]
 		};
 
-		const htmlPath = path.join(this.context.extensionPath, 'src', 'wattsup', 'wattsupDashboard.html');
-		let html = fs.readFileSync(htmlPath, 'utf-8');
+		const htmlUri = vscode.Uri.joinPath(this.context.extensionUri, 'src', 'wattsup', 'wattsupDashboard.html');
+		let html = fs.readFileSync(htmlUri.fsPath, 'utf-8');
 
 		// Inject Chart.js and equivalences data into the HTML
 		const chartJsPath = vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'chart.js', 'dist', 'chart.umd.js');
