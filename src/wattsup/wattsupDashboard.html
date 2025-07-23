@@ -19,7 +19,7 @@
         color: var(--vscode-foreground);
         text-transform: uppercase;
       }
-      
+
       .section {
         margin-top: 20px;
       }
@@ -294,6 +294,9 @@
         let statsData = null;
         let equivalences = null;
 
+        // VS Code API for webview communication
+        const vscode = acquireVsCodeApi();
+
         // Color palette for different models
         const colors = [
           'rgb(255, 99, 132)',
@@ -368,10 +371,10 @@
 
           enabledEquivalences.forEach(equiv => {
             const equivalentValue = totalCO2kg / equiv.kgCO2eq;
-            
+
             const equivalenceBox = document.createElement('div');
             equivalenceBox.className = 'equivalence-box';
-            
+
             // Format the value appropriately
             let formattedValue;
             if (equivalentValue < 1) {
@@ -382,7 +385,7 @@
               const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
               formattedValue = formatter.format(Math.round(equivalentValue));
             }
-            
+
             equivalenceBox.innerHTML = `
               <div class="equivalence-icon">${equiv.emoji}</div>
               <div class="equivalence-content">
@@ -390,7 +393,7 @@
                 <div class="equivalence-label">${equiv.label}</div>
               </div>
             `;
-            
+
             equivalenceGrid.appendChild(equivalenceBox);
           });
         }
@@ -418,8 +421,8 @@
             }[currentMetric];
 
             // Convert units for display
-            const displayData = currentMetric === 'tokens' 
-              ? metricData 
+            const displayData = currentMetric === 'tokens'
+              ? metricData
               : metricData.map(value => parseFloat(convertUnits(value, currentMetric)));
 
             return {
@@ -432,29 +435,29 @@
           });
 
           chart.data.labels = labels;
-          chart.data.datasets = currentModel === 'all' 
-            ? datasets 
+          chart.data.datasets = currentModel === 'all'
+            ? datasets
             : datasets.filter(d => d.label === currentModel);
-          
+
           // Update Y-axis label
           chart.options.scales.y.title = {
             display: true,
             text: getYAxisLabel(currentMetric)
           };
-          
+
           chart.update();
         }
 
         // Update totals section
         function updateTotals() {
           if (!statsData) return;
-          
+
           const totals = statsData.totals;
           document.getElementById('totalEnergy').textContent = convertUnitsForTotals(totals.energy_avg, 'energy');
           document.getElementById('totalGwp').textContent = convertUnitsForTotals(totals.gwp_avg, 'gwp');
           document.getElementById('totalTokens').textContent = formatNumber(totals.output_token);
           document.getElementById('totalCount').textContent = formatNumber(totals.count);
-          
+
           // Update equivalences when totals are updated
           updateEquivalences();
         }
@@ -465,7 +468,7 @@
 
           const modelSelect = document.getElementById('modelSelect');
           const currentValue = modelSelect.value;
-          
+
           // Clear existing options except "All"
           while (modelSelect.options.length > 1) {
             modelSelect.remove(1);
@@ -487,25 +490,26 @@
         }
 
         // Fetch data from API
-        async function fetchData() {
-          try {
-            const response = await fetch(`http://localhost:9999/stats?period=${currentPeriod}`, {
-              mode: 'cors',
-            });
-            statsData = await response.json();
-            updateModelSelect();
-            updateChart();
-            updateTotals();
-            updateEquivalences(); // Update equivalences when new data is fetched
-          } catch (error) {
-            console.error('Error fetching data:', error);
-          }
+        function requestDataRefresh(period = currentPeriod) {
+          currentPeriod = period;
+          vscode.postMessage({
+            type: 'wattsupRequestDataRefresh',
+            period: period
+          });
+        }
+
+        // Handle data received from extension
+        function handleDataRefresh(data) {
+          statsData = data;
+          updateModelSelect();
+          updateChart();
+          updateTotals();
+          updateEquivalences();
         }
 
         // Event listeners
         document.getElementById('periodSelect').addEventListener('change', (e) => {
-          currentPeriod = e.target.value;
-          fetchData();
+          requestDataRefresh(e.target.value);
         });
 
         document.getElementById('metricSelect').addEventListener('change', (e) => {
@@ -518,12 +522,18 @@
           updateChart();
         });
 
-        // Initial data fetch
-        loadEquivalences();
-        fetchData();
+        // Listen for messages from the extension
+        window.addEventListener('message', event => {
+          const message = event.data;
+          switch (message.type) {
+            case 'wattsupDataRefreshed':
+              handleDataRefresh(message.data);
+              break;
+          }
+        });
 
-        // Refresh data every 10 seconds
-        setInterval(fetchData, 10000);
+        // Initial setup
+        loadEquivalences();
       })();
     </script>
   </body>
