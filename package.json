@@ -3837,6 +3837,7 @@
     "ajv": "^8.17.1",
     "applicationinsights": "^2.9.7",
     "chart.js": "^4.5.0",
+    "danfojs-node": "^1.2.0",
     "ignore": "^7.0.5",
     "isbinaryfile": "^5.0.4",
     "jsonc-parser": "^3.3.1",

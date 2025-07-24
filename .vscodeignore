@@ -27,5 +27,5 @@ assets/walkthroughs/**
 !ThirdPartyNotices.txt
 !LICENSE.txt
 !src/wattsup/wattsupDashboard.html
-!src/wattsup/equivalences.json
+!src/wattsup/data/equivalences.json
 !node_modules/chart.js/dist/chart.umd.js
