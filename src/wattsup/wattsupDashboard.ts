@@ -1,10 +1,10 @@
-import * as dfd from 'danfojs-node';
+import * as aq from 'arquero';
 import fs from 'fs';
 import * as vscode from 'vscode';
 import { IExtensionContribution } from '../extension/common/contributions';
 import { IVSCodeExtensionContext } from '../platform/extContext/common/extensionContext';
 import { IFetcherService } from '../platform/networking/common/fetcherService';
-import { IRequestLogger } from '../platform/requestLogger/node/requestLogger';
+import { ILoggedRequestInfo, IRequestLogger, LoggedInfoKind } from '../platform/requestLogger/node/requestLogger';
 import { IntervalTimer } from '../util/vs/base/common/async';
 import { Disposable } from '../util/vs/base/common/lifecycle';
 import equivalencesData from './data/equivalences.json';
@@ -16,7 +16,7 @@ interface ModelMapping {
 }
 
 const csvHeader = [
-	'id', 'timestamp', 'model', 'provider', 'estimation_model', 'input_token', 'output_token', 'latency',
+	'id', 'timestamp', 'provider', 'model', 'estimation_model', 'input_token', 'output_token', 'latency',
 	'energy_min', 'energy_max', 'gwp_min', 'gwp_max', 'adpe_min', 'adpe_max', 'pe_min', 'pe_max'
 ]
 
@@ -50,8 +50,8 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 	readonly id = 'wattsupDashboard';
 	private _webviewView: vscode.WebviewView | undefined;
 	private _currentPeriod: string = 'daily';
-	private _processedRequests: Set<string> = new Set();
-	private _dataframe: dfd.DataFrame | undefined;
+	private _processedRequests: string[] = [];
+	private _usageTable: aq.Table | undefined;
 	private _storageDir: string;
 	private _csvFilePath: string;
 
@@ -84,20 +84,15 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 	}
 
 	private async loadDataframe(): Promise<void> {
-		// try {
-		// 	// Load dataframe from CSV file
-		// 	this._dataframe = await dfd.readCSV(this._csvFilePath);
-		// 	console.log(`[wattsup] Loaded dataframe with ${this._dataframe.shape[0]} rows`);
-		// } catch (error) {
-		// 	console.error('[wattsup] Error loading dataframe:', error);
-		// 	// Create empty dataframe with expected columns if loading fails
-		// 	const emptyData = {
-		// 		id: [], model: [], provider: [], estimationModel: [], inputToken: [], outputToken: [],
-		// 		latency: [], timestamp: [], energy_min: [], energy_max: [], gwp_min: [], gwp_max: [],
-		// 		adpe_min: [], adpe_max: [], pe_min: [], pe_max: []
-		// 	};
-		// 	this._dataframe = new dfd.DataFrame(emptyData);
-		// }
+		try {
+			const csvContent = fs.readFileSync(this._csvFilePath, 'utf-8');
+			this._usageTable = await aq.fromCSV(csvContent);
+			console.log(`[wattsup] Loaded dataframe with ${this._usageTable.totalRows()} rows`);
+		} catch (error) {
+			console.error('[wattsup] Error loading dataframe from CSV, creating empty dataframe:', error);
+			this._usageTable = await aq.fromCSV(csvHeader.join(',') + '\n');
+		}
+		console.log(`[wattsup] Dataframe initialized`);
 	}
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -141,32 +136,35 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		console.log('[wattsup] Fetching request data...');
 
 		const requests = await this.requestLogger.getRequests()
-		const formattedRequests = requests.filter(request => !this._processedRequests.has(request.id)).map(request => {
-			const data: Record<string, any> = {};
-			const entry = request.entry;
-			data.id = request.id;
-			data.timestamp = entry.startTime.getTime();
-			data.model = entry.chatParams.model;
-			data.input_token = entry.usage.prompt_tokens;
-			data.output_token = entry.usage.completion_tokens;
-			data.latency = entry.endTime - entry.startTime;
+		const formattedRequests = requests
+			.filter(request => request.kind === LoggedInfoKind.Request)
+			.filter(request => !this._processedRequests.includes(request.id))
+			.map((request: ILoggedRequestInfo) => {
+				const data: Record<string, any> = {};
+				const entry = request.entry;
+				data.id = request.id;
+				data.timestamp = entry.startTime.getTime();
+				data.model = entry.chatParams.model;
+				data.input_token = entry.usage.prompt_tokens;
+				data.output_token = entry.usage.completion_tokens;
+				data.latency = entry.endTime - entry.startTime;
 
-			const { model, provider, } = getProviderAndModelName(data.model);
-			data.provider = provider;
-			data.estimation_model = model;
+				const { model, provider, } = getProviderAndModelName(data.model);
+				data.provider = provider;
+				data.estimation_model = model;
 
-			const impact = llmImpact(provider, model, data.output_token, data.latency);
-			data.energy_min = impact.energy.min;
-			data.energy_max = impact.energy.max;
-			data.gwp_min = impact.gwp.min;
-			data.gwp_max = impact.gwp.max;
-			data.adpe_min = impact.adpe.min;
-			data.adpe_max = impact.adpe.max;
-			data.pe_min = impact.pe.min;
-			data.pe_max = impact.pe.max;
+				const impact = llmImpact(provider, model, data.output_token, data.latency);
+				data.energy_min = impact.energy.min;
+				data.energy_max = impact.energy.max;
+				data.gwp_min = impact.gwp.min;
+				data.gwp_max = impact.gwp.max;
+				data.adpe_min = impact.adpe.min;
+				data.adpe_max = impact.adpe.max;
+				data.pe_min = impact.pe.min;
+				data.pe_max = impact.pe.max;
 
-			return data;
-		});
+				return data;
+			});
 
 		if (formattedRequests.length === 0) {
 			console.log('[wattsup] No new requests to process.');
@@ -175,26 +173,16 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 
 		if (formattedRequests.length > 0) {
 			try {
-				// // Add entries to dataframe
-				// const newDataframe = new dfd.DataFrame(formattedRequests);
-				// const concatenated = dfd.concat({ dfList: [this._dataframe, newDataframe], axis: 0 });
-				// this._dataframe = concatenated as DataFrame;
+				const newRows = aq.from(formattedRequests);
+				this._usageTable = this._usageTable.concat(newRows);
+				fs.writeFileSync(this._csvFilePath, this._usageTable.toCSV());
 
-				// // Save to CSV
-				// this._dataframe.toCSV(this._csvFilePath);
-
-				// Add request IDs to _processedRequests
 				formattedRequests.forEach(request => {
-					this._processedRequests.add(request.id);
+					this._processedRequests.push(request.id);
 				});
-
-				// Truncate _processedRequests to 100 last entries
-				// if (this._processedRequests.size > 100) {
-				// 	const requestsArray = Array.from(this._processedRequests);
-				// 	const toKeep = requestsArray.slice(-100);
-				// 	this._processedRequests.clear();
-				// 	toKeep.forEach(id => this._processedRequests.add(id));
-				// }
+				if (this._processedRequests.length > 100) {
+					this._processedRequests.splice(0, this._processedRequests.length - 100);
+				}
 
 				console.log(`[wattsup] Added ${formattedRequests.length} new requests to dataframe.`);
 			} catch (error) {
