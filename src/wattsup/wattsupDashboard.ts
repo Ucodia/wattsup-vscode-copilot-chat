@@ -128,7 +128,6 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 			}
 		}));
 
-		this.fetchDataAndNotify();
 		this.schedulePeriodicFetch();
 	}
 
@@ -165,11 +164,6 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 
 				return data;
 			});
-
-		if (formattedRequests.length === 0) {
-			console.log('[wattsup] No new requests to process.');
-			return;
-		}
 
 		if (formattedRequests.length > 0) {
 			try {
