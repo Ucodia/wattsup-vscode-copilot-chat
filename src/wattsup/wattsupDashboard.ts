@@ -1,24 +1,18 @@
-import * as aq from 'arquero';
 import fs from 'fs';
 import * as vscode from 'vscode';
 import { IExtensionContribution } from '../extension/common/contributions';
 import { IVSCodeExtensionContext } from '../platform/extContext/common/extensionContext';
-import { IFetcherService } from '../platform/networking/common/fetcherService';
 import { ILoggedRequestInfo, IRequestLogger, LoggedInfoKind } from '../platform/requestLogger/node/requestLogger';
 import { IntervalTimer } from '../util/vs/base/common/async';
 import { Disposable } from '../util/vs/base/common/lifecycle';
 import equivalencesData from './data/equivalences.json';
 import llmImpact from './llmImpact';
+import { Usage, WattsupUsageDatabase } from './wattsupUsageDatabase';
 
 interface ModelMapping {
 	provider: string;
 	model: string;
 }
-
-const csvHeader = [
-	'id', 'timestamp', 'provider', 'model', 'estimation_model', 'input_token', 'output_token', 'latency',
-	'energy_min', 'energy_max', 'gwp_min', 'gwp_max', 'adpe_min', 'adpe_max', 'pe_min', 'pe_max'
-]
 
 const modelMap: Record<string, ModelMapping> = {
 	// anthropic
@@ -34,6 +28,7 @@ const modelMap: Record<string, ModelMapping> = {
 	"gpt-4o-mini": { provider: "openai", model: "gpt-4o-mini" },
 	"o1-mini": { provider: "openai", model: "o1-mini" },
 	"o3-mini": { provider: "openai", model: "o1-mini" },
+	"o4-mini": { provider: "openai", model: "o1-mini" },
 };
 
 function getProviderAndModelName(originalModelName: string): ModelMapping {
@@ -51,13 +46,11 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 	private _webviewView: vscode.WebviewView | undefined;
 	private _currentPeriod: string = 'daily';
 	private _processedRequests: string[] = [];
-	private _usageTable: aq.ColumnTable;
+	private _usageDatabase: WattsupUsageDatabase;
 	private _storageDir: string;
-	private _csvFilePath: string;
 
 	constructor(@IVSCodeExtensionContext private readonly context: IVSCodeExtensionContext,
 		@IRequestLogger private readonly requestLogger: IRequestLogger,
-		@IFetcherService private readonly fetcherService: IFetcherService,
 		private readonly fetchTimer: IntervalTimer = new IntervalTimer()
 	) {
 		super();
@@ -65,30 +58,7 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		this._register(vscode.window.registerWebviewViewProvider('copilot-wattsup', this));
 
 		this._storageDir = vscode.Uri.joinPath(this.context.globalStorageUri, 'wattsup').fsPath;
-		this._csvFilePath = vscode.Uri.joinPath(this.context.globalStorageUri, 'wattsup', 'usage.csv').fsPath;
-		this.initializeStorage();
-		this._usageTable = this.initializeUsageTable();
-	}
-
-	private initializeStorage(): void {
-		if (!fs.existsSync(this._storageDir)) {
-			fs.mkdirSync(this._storageDir, { recursive: true });
-		}
-		if (!fs.existsSync(this._csvFilePath)) {
-			fs.writeFileSync(this._csvFilePath, csvHeader.join(',') + '\n');
-		}
-	}
-
-	private initializeUsageTable(): aq.ColumnTable {
-		let usageTable: aq.ColumnTable;
-		try {
-			const csvContent = fs.readFileSync(this._csvFilePath, 'utf-8');
-			usageTable = aq.fromCSV(csvContent);
-		} catch (error) {
-			console.error('[wattsup] Error loading table from CSV, creating empty table:', error);
-			usageTable = aq.fromCSV(csvHeader.join(',') + '\n');
-		}
-		return usageTable
+		this._usageDatabase = this._register(new WattsupUsageDatabase(this._storageDir));
 	}
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -139,7 +109,7 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 			.filter(request => request.kind === LoggedInfoKind.Request)
 			.filter(request => !this._processedRequests.includes(request.id))
 			.map((request: ILoggedRequestInfo) => {
-				const data: Record<string, any> = {};
+				const data: Partial<Usage> = {};
 				const entry = request.entry as any;
 				data.id = request.id;
 				data.timestamp = entry.startTime?.getTime() || 0;
@@ -149,11 +119,11 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 				data.latency = (entry.endTime && entry.startTime) ? entry.endTime - entry.startTime : 0;
 
 				try {
-					const { model, provider } = getProviderAndModelName(data.model);
+					const { model, provider } = getProviderAndModelName(data.model!);
 					data.provider = provider;
 					data.estimation_model = model;
 
-					const impact = llmImpact(provider, model, data.output_token, data.latency);
+					const impact = llmImpact(provider, model, data.output_token!, data.latency!);
 					data.energy_min = impact.energy.min;
 					data.energy_max = impact.energy.max;
 					data.gwp_min = impact.gwp.min;
@@ -165,28 +135,16 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 				} catch (error) {
 					console.warn(`[wattsup] Could not process model ${data.model}, skipping impact calculation`);
 					data.provider = 'unknown';
-					data.estimation_model = 'unknown';
-					data.energy_min = 0;
-					data.energy_max = 0;
-					data.gwp_min = 0;
-					data.gwp_max = 0;
-					data.adpe_min = 0;
-					data.adpe_max = 0;
-					data.pe_min = 0;
-					data.pe_max = 0;
 				}
 
-				return data;
-			}).filter(request => request.energy_min !== 0); // filter unprocessed requests
+				return data as Usage;
+			}).filter(request => request.provider !== 'unknown'); // filter unprocessed requests
 
 		if (formattedRequests.length > 0) {
-			const newRows = aq.from(formattedRequests);
-			this._usageTable = this._usageTable.concat(newRows);
-
 			try {
-				fs.writeFileSync(this._csvFilePath, this._usageTable.toCSV());
+				await this._usageDatabase.addUsage(formattedRequests);
 			} catch (error) {
-				console.error('[wattsup] Error writing usage table to CSV file', error);
+				console.error('[wattsup] Error adding usage data to database', error);
 			}
 
 			formattedRequests.forEach(request => {
@@ -199,10 +157,7 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		}
 
 		try {
-			// old backend fetch
-			// const response = await fetch(`http://localhost:9999/stats?period=${this._currentPeriod}`);
-			// const statsData = await response.json();
-			const statsData = this.computeStats(this._currentPeriod);
+			const statsData = this._usageDatabase.getTotals(this._currentPeriod);
 
 			if (this._webviewView) {
 				this._webviewView.webview.postMessage({
@@ -213,106 +168,5 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		} catch (error) {
 			console.error('[wattsup] Error computing stats:', error);
 		}
-	}
-
-	private computeStats(period: string): any {
-		const periodEndMs = new Date().getTime();
-		let intervalMs: number;
-		let periodCount: number;
-
-		if (period === 'hourly') {
-			intervalMs = 5 * 60 * 1000;
-			periodCount = 12;
-		} else if (period === 'daily') {
-			intervalMs = 60 * 60 * 1000;
-			periodCount = 24;
-		} else if (period === 'monthly') {
-			intervalMs = 24 * 60 * 60 * 1000;
-			periodCount = 30;
-		} else {
-			throw new Error(`Invalid time period: ${period}`);
-		}
-
-		const periodStartMs = periodEndMs - (periodCount * intervalMs);
-		const floorTimestamp = (timestamp: number) => Math.floor(timestamp / intervalMs) * intervalMs;
-
-		const filteredUsage = this._usageTable
-			.filter(aq.escape((d: any) => d.timestamp >= periodStartMs && d.timestamp <= periodEndMs))
-			.derive({
-				energy_avg: aq.escape((d: any) => (d.energy_min + d.energy_max) / 2),
-				gwp_avg: aq.escape((d: any) => (d.gwp_min + d.gwp_max) / 2),
-				pe_avg: aq.escape((d: any) => (d.pe_min + d.pe_max) / 2),
-				time_group: aq.escape((d: any) => new Date(floorTimestamp(d.timestamp)))
-			});
-
-		const groupedUsage = filteredUsage
-			.groupby('model', 'time_group')
-			.rollup({
-				output_token_total: (d: any) => aq.op.sum(d.output_token),
-				energy_total: (d: any) => aq.op.sum(d.energy_avg),
-				gwp_total: (d: any) => aq.op.sum(d.gwp_avg),
-				count: aq.op.count()
-			})
-			.orderby('time_group', 'model');
-
-		groupedUsage.print();
-
-		const timePeriods: string[] = [];
-		const lastLabelTimestamp = floorTimestamp(periodEndMs);
-		for (let i = 0; i < periodCount; i++) {
-			const labelTimestamp = lastLabelTimestamp - (periodCount - 1 - i) * intervalMs;
-			timePeriods.push(new Date(labelTimestamp).toISOString());
-		}
-		const models = groupedUsage.ungroup().dedupe('model').objects().map((d: any) => d.model);
-		const groupedData = groupedUsage.objects();
-
-		const data = [];
-		for (const model of models) {
-			const modelData: {
-				energy_avg: number[],
-				gwp_avg: number[],
-				output_token: number[]
-			} = {
-				energy_avg: Array(timePeriods.length).fill(0),
-				gwp_avg: Array(timePeriods.length).fill(0),
-				output_token: Array(timePeriods.length).fill(0)
-			};
-
-			const modelRows = groupedData.filter((r: any) => r.model === model);
-
-			for (const row of modelRows) {
-				const labelIndex = timePeriods.indexOf((row.time_group as Date).toISOString());
-				if (labelIndex !== -1) {
-					modelData.energy_avg[labelIndex] = row.energy_total;
-					modelData.gwp_avg[labelIndex] = row.gwp_total;
-					modelData.output_token[labelIndex] = row.output_token_total;
-				}
-			}
-
-			data.push({
-				model_name: model,
-				data: modelData
-			});
-		}
-
-		const usageTotals = groupedUsage.rollup({
-			energy_total: (d: any) => aq.op.sum(d.energy_total),
-			gwp_total: (d: any) => aq.op.sum(d.gwp_total),
-			output_token_total: (d: any) => aq.op.sum(d.output_token_total),
-			count: (d: any) => aq.op.sum(d.count)
-		}).objects()[0];
-
-		return {
-			aggregates: {
-				labels: timePeriods,
-				data: data,
-			},
-			totals: {
-				energy_avg: usageTotals?.energy_total || 0,
-				gwp_avg: usageTotals?.gwp_total || 0,
-				output_token: usageTotals?.output_token_total || 0,
-				count: usageTotals?.count || 0
-			}
-		};
 	}
 }
