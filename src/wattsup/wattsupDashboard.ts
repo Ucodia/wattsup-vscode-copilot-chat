@@ -5,7 +5,6 @@ import { IVSCodeExtensionContext } from '../platform/extContext/common/extension
 import { ILoggedRequestInfo, IRequestLogger, LoggedInfoKind } from '../platform/requestLogger/node/requestLogger';
 import { IntervalTimer } from '../util/vs/base/common/async';
 import { Disposable } from '../util/vs/base/common/lifecycle';
-import equivalencesData from './data/equivalences.json';
 import llmImpact from './llmImpact';
 import { Usage, WattsupUsageDatabase } from './wattsupUsageDatabase';
 
@@ -75,12 +74,11 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		const htmlUri = vscode.Uri.joinPath(this.context.extensionUri, 'src', 'wattsup', 'wattsupDashboard.html');
 		let html = fs.readFileSync(htmlUri.fsPath, 'utf-8');
 
-		// Inject Chart.js and equivalences data into the HTML
+		// inject Chart.js into the HTML
 		const chartJsPath = vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'chart.js', 'dist', 'chart.umd.js');
 		const chartJsUri = webviewView.webview.asWebviewUri(chartJsPath);
 		const chartJsScript = `<script src="${chartJsUri}"></script>`;
-		const equivalencesScript = `<script>window.equivalencesData = ${JSON.stringify(equivalencesData)};</script>`;
-		html = html.replace('<script>', chartJsScript + '\n    ' + equivalencesScript + '\n    <script>');
+		html = html.replace('<script>', chartJsScript + '\n    <script>');
 
 		webviewView.webview.html = html;
 

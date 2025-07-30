@@ -15,7 +15,7 @@
 			h2 {
 				font-size: 1em;
 				font-weight: 600;
-				margin: 16x 0 16px 0;
+				margin: 16px 0 16px 0;
 				color: var(--vscode-foreground);
 				text-transform: uppercase;
 			}
@@ -157,7 +157,6 @@
 		</style>
 	</head>
 	<body>
-		<!-- Model Usage Section -->
 		<section class="section">
 			<div style="display: flex; gap: 8px; flex-wrap: wrap">
 				<select class="dropdown" id="metricSelect">
@@ -176,7 +175,6 @@
 			</div>
 		</section>
 
-		<!-- Statistics Section -->
 		<section class="section">
 			<h2>STATISTICS</h2>
 			<div class="stats-chart">
@@ -184,7 +182,6 @@
 			</div>
 		</section>
 
-		<!-- Totals Section -->
 		<section class="section">
 			<h2>TOTALS</h2>
 			<div class="totals-grid">
@@ -219,15 +216,11 @@
 			</div>
 		</section>
 
-		<!-- Equivalence Section -->
 		<section class="section">
 			<h2>EQUIVALENCE</h2>
-			<div class="equivalence-grid" id="equivalenceGrid">
-				<!-- Equivalence items will be dynamically generated here -->
-			</div>
+			<div class="equivalence-grid" id="equivalenceGrid"></div>
 		</section>
 
-		<!-- Footer -->
 		<section class="section">
 			<div
 				style="
@@ -243,7 +236,6 @@
 
 		<script>
 			(function () {
-				// Initialize chart
 				const ctx = document
 					.getElementById('statsChart')
 					.getContext('2d');
@@ -296,17 +288,13 @@
 					},
 				});
 
-				// State management
 				let currentPeriod = 'daily';
 				let currentMetric = 'energy';
 				let currentModel = 'all';
 				let statsData = null;
-				let equivalences = null;
 
-				// VS Code API for webview communication
 				const vscode = acquireVsCodeApi();
 
-				// Color palette for different models
 				const colors = [
 					'rgb(255, 99, 132)',
 					'rgb(75, 192, 192)',
@@ -363,40 +351,20 @@
 					return '';
 				}
 
-				// Load equivalences configuration
-				function loadEquivalences() {
-					// Use equivalences data injected by the extension
-					if (window.equivalencesData) {
-						equivalences = window.equivalencesData;
-						updateEquivalences();
-					} else {
-						console.error('Equivalences data not found');
-					}
-				}
-
-				// Update equivalences section
 				function updateEquivalences() {
-					if (!statsData || !equivalences) return;
+					if (!statsData) return;
 
 					const equivalenceGrid =
 						document.getElementById('equivalenceGrid');
 					equivalenceGrid.innerHTML = '';
 
-					// Convert total CO2 from gCO2eq to kgCO2eq for calculations
-					const totalCO2kg = statsData.totals.gwp_avg; // API provides kgCO2eq
-
-					// Filter only enabled equivalences
-					const enabledEquivalences = equivalences.filter(
-						(equiv) => equiv.enabled !== false,
-					);
-
-					enabledEquivalences.forEach((equiv) => {
-						const equivalentValue = totalCO2kg / equiv.kgCO2eq;
+					statsData.equivalences.forEach((eq) => {
+						const equivalentValue = eq.value;
+						const equiv = eq.equivalence;
 
 						const equivalenceBox = document.createElement('div');
 						equivalenceBox.className = 'equivalence-box';
 
-						// Format the value appropriately
 						let formattedValue;
 						if (equivalentValue < 1) {
 							formattedValue = equivalentValue.toFixed(2);
@@ -423,7 +391,6 @@
 					});
 				}
 
-				// Update chart data based on current selections
 				function updateChart() {
 					if (!statsData) return;
 
@@ -451,7 +418,6 @@
 								tokens: modelData.data.output_token,
 							}[currentMetric];
 
-							// Convert units for display
 							const displayData =
 								currentMetric === 'tokens'
 									? metricData
@@ -480,7 +446,6 @@
 							? datasets
 							: datasets.filter((d) => d.label === currentModel);
 
-					// Update Y-axis label
 					chart.options.scales.y.title = {
 						display: true,
 						text: getYAxisLabel(currentMetric),
@@ -489,7 +454,6 @@
 					chart.update();
 				}
 
-				// Update totals section
 				function updateTotals() {
 					if (!statsData) return;
 
@@ -503,11 +467,9 @@
 					document.getElementById('totalCount').textContent =
 						formatNumber(totals.count);
 
-					// Update equivalences when totals are updated
 					updateEquivalences();
 				}
 
-				// Populate model select options
 				function updateModelSelect() {
 					if (!statsData) return;
 
@@ -519,7 +481,6 @@
 						modelSelect.remove(1);
 					}
 
-					// Add model options
 					const models = statsData.aggregates.data.map(
 						(d) => d.model_name,
 					);
@@ -530,13 +491,12 @@
 						modelSelect.appendChild(option);
 					});
 
-					// Restore selection if possible
+					// restore selection
 					if (models.includes(currentValue)) {
 						modelSelect.value = currentValue;
 					}
 				}
 
-				// Fetch data from API
 				function requestDataRefresh(period = currentPeriod) {
 					currentPeriod = period;
 					vscode.postMessage({
@@ -545,7 +505,6 @@
 					});
 				}
 
-				// Handle data received from extension
 				function handleDataRefresh(data) {
 					statsData = data;
 					updateModelSelect();
@@ -554,7 +513,6 @@
 					updateEquivalences();
 				}
 
-				// Event listeners
 				document
 					.getElementById('periodSelect')
 					.addEventListener('change', (e) => {
@@ -575,7 +533,6 @@
 						updateChart();
 					});
 
-				// Listen for messages from the extension
 				window.addEventListener('message', (event) => {
 					const message = event.data;
 					switch (message.type) {
@@ -584,9 +541,6 @@
 							break;
 					}
 				});
-
-				// Initial setup
-				loadEquivalences();
 			})();
 		</script>
 	</body>

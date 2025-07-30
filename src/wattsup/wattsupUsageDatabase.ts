@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
 import { Disposable } from '../util/vs/base/common/lifecycle';
+import equivalencesData from './data/equivalences.json';
 
 export interface Usage {
 	id: string;
@@ -23,6 +24,14 @@ export interface Usage {
 	pe_max: number;
 }
 
+export interface Equivalence {
+	label: string;
+	unit: string;
+	emoji: string;
+	kgCO2eq: number;
+	enabled: boolean;
+}
+
 export interface UsageTotals {
 	aggregates: {
 		labels: string[];
@@ -41,6 +50,10 @@ export interface UsageTotals {
 		output_token: number;
 		count: number;
 	};
+	equivalences: Array<{
+		equivalence: Equivalence;
+		value: number;
+	}>;
 }
 
 const csvHeader = [
@@ -299,6 +312,11 @@ export class WattsupUsageDatabase extends Disposable {
 			count: (d: any) => aq.op.sum(d.count)
 		}).objects()[0] as any;
 
+		const equivalences = equivalencesData.filter(eq => eq.enabled).map(eq => ({
+			equivalence: eq,
+			value: usageTotals.gwp_total / eq.kgCO2eq
+		}));
+
 		return {
 			aggregates: {
 				labels: timePeriods,
@@ -309,7 +327,8 @@ export class WattsupUsageDatabase extends Disposable {
 				gwp_avg: usageTotals?.gwp_total || 0,
 				output_token: usageTotals?.output_token_total || 0,
 				count: usageTotals?.count || 0
-			}
+			},
+			equivalences: equivalences
 		};
 	}
 
