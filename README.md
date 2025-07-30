@@ -26,4 +26,13 @@ Make sure to switch the [package.json](package.json#L10) `buildType` is set to `
 
 ## Installation
 
-Since this extension cannot be released in the VS Code marketplace, you will need to download the latest release and install it manually by using the "Install from VSIX" command in VS Code or by using the command line `code --install-extension copilot-chat-99.0.0.vsix`. It is recommended to restart all VS Code instances after installation.
+### From VS Code
+
+Since this extension cannot be released in the VS Code marketplace, you will need to download the [latest release](https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases) and install it manually by using the "Install from VSIX" command in VS Code.
+
+### From command line
+
+```
+wget https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases/download/99.0.0/wattsup-copilot-chat-99.0.0.vsix
+code --install-extension wattsup-copilot-chat-99.0.0.vsix
+```
