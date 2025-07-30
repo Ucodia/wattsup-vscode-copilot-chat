@@ -158,7 +158,8 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 			formattedRequests.forEach(request => {
 				this._processedRequests.push(request.id);
 			});
-			// keep only the last 100 processed requests
+			// keep only the last 100 processed requests to prevent infinite growth
+			// the request logger implementation only stores the last 100 requests
 			if (this._processedRequests.length > 100) {
 				this._processedRequests.splice(0, this._processedRequests.length - 100);
 			}
