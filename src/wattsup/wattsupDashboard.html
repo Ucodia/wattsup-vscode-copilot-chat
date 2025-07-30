@@ -284,6 +284,13 @@
 									padding: 10,
 								},
 							},
+							tooltip: {
+								callbacks: {
+									label: function (context) {
+										return `${context.dataset.label}: ${context.parsed.y.toFixed(0)}`;
+									},
+								},
+							},
 						},
 					},
 				});
@@ -308,42 +315,10 @@
 					'rgb(86, 205, 255)',
 				];
 
-				// Format number with thousand separators
-				function formatNumber(num) {
-					return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-				}
+				const noDigitsFormatter = new Intl.NumberFormat('en-US', {
+					maximumFractionDigits: 0,
+				});
 
-				// Convert API units to display units
-				function convertUnits(value, metric) {
-					if (metric === 'energy') {
-						// API sends kWh, convert to Wh (multiply by 1,000)
-						return (value * 1000).toFixed(3);
-					} else if (metric === 'gwp') {
-						// API sends kgCO2eq, convert to gCO2eq (multiply by 1,000)
-						return (value * 1000).toFixed(2);
-					}
-					return value;
-				}
-
-				// Convert API units to display units for totals (no decimals for energy and CO2)
-				function convertUnitsForTotals(value, metric) {
-					if (metric === 'energy') {
-						// API sends kWh, convert to Wh (multiply by 1,000), no decimals
-						const formatter = new Intl.NumberFormat('en-US', {
-							maximumFractionDigits: 0,
-						});
-						return formatter.format(value * 1000);
-					} else if (metric === 'gwp') {
-						// API sends kgCO2eq, convert to gCO2eq (multiply by 1,000), no decimals
-						const formatter = new Intl.NumberFormat('en-US', {
-							maximumFractionDigits: 0,
-						});
-						return formatter.format(value * 1000);
-					}
-					return value;
-				}
-
-				// Get Y-axis label based on metric
 				function getYAxisLabel(metric) {
 					if (metric === 'energy') return 'Energy (Wh)';
 					if (metric === 'gwp') return 'CO2 emissions (gCO2eq)';
@@ -419,16 +394,10 @@
 							}[currentMetric];
 
 							const displayData =
-								currentMetric === 'tokens'
-									? metricData
-									: metricData.map((value) =>
-											parseFloat(
-												convertUnits(
-													value,
-													currentMetric,
-												),
-											),
-										);
+								currentMetric === 'energy' ||
+								currentMetric === 'gwp'
+									? metricData.map((value) => value * 1000) // convert from kWh/kg to Wh/g
+									: metricData;
 
 							return {
 								label: modelData.model_name,
@@ -459,15 +428,13 @@
 
 					const totals = statsData.totals;
 					document.getElementById('totalEnergy').textContent =
-						convertUnitsForTotals(totals.energy_avg, 'energy');
+						noDigitsFormatter.format(totals.energy_avg * 1000);
 					document.getElementById('totalGwp').textContent =
-						convertUnitsForTotals(totals.gwp_avg, 'gwp');
+						noDigitsFormatter.format(totals.gwp_avg * 1000);
 					document.getElementById('totalTokens').textContent =
-						formatNumber(totals.output_token);
+						noDigitsFormatter.format(totals.output_token);
 					document.getElementById('totalCount').textContent =
-						formatNumber(totals.count);
-
-					updateEquivalences();
+						noDigitsFormatter.format(totals.count);
 				}
 
 				function updateModelSelect() {
