@@ -88,22 +88,30 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 			switch (message.type) {
 				case 'wattsupRequestDataRefresh':
 					this._currentPeriod = message.period || this._currentPeriod;
-					this.fetchDataAndNotify();
-					this.schedulePeriodicFetch();
+					this.fetchAndSchedule();
 					break;
 			}
 		}));
 
-		this.schedulePeriodicFetch();
+		this._register(webviewView.onDidChangeVisibility(() => {
+			if (webviewView.visible) {
+				this.fetchAndSchedule();
+			} else {
+				this.fetchTimer.cancel();
+			}
+		}));
+
+		this.fetchAndSchedule();
 	}
 
-	private schedulePeriodicFetch(): void {
+	private fetchAndSchedule(): void {
+		this.fetchAndNotify();
 		this.fetchTimer.cancelAndSet(() => {
-			this.fetchDataAndNotify();
+			this.fetchAndNotify();
 		}, 10000);
 	}
 
-	private async fetchDataAndNotify(): Promise<void> {
+	private async fetchAndNotify(): Promise<void> {
 		const requests = await this.requestLogger.getRequests()
 		const formattedRequests = requests
 			.filter(request => request.kind === LoggedInfoKind.Request)
