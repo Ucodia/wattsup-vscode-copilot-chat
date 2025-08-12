@@ -20,7 +20,7 @@ Data storage is defined in the [WattsupUsageDatabase](src/wattsup/wattsupUsageDa
 
 ## Packaging and quirks
 
-The official `vscode-copilot-chat` extension from which this repository is forked, relies on another non open source `vscode-copilot` extension. This makes it impossible to have both the Wattsup version of the extension and the official extension together. As such this fork was versioned differently starting with version `99.0.0` to avoid conflict with the official release.
+The official `vscode-copilot-chat` extension from which this repository is forked, relies on another non open source `vscode-copilot` extension. This makes it impossible to have both the Wattsup version of the extension and the official extension together. As such this fork was versioned differently starting with version `99.x.x` to avoid conflict with the official release.
 
 Make sure to switch the [package.json](package.json#L10) `buildType` is set to `prod` before running `npm run package`.
 
@@ -33,6 +33,6 @@ Since this extension cannot be released in the VS Code marketplace, you will nee
 ### From command line
 
 ```
-wget https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases/download/99.0.0/wattsup-copilot-chat-99.0.0.vsix
-code --install-extension wattsup-copilot-chat-99.0.0.vsix
+wget https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases/download/99.0.0/wattsup-copilot-chat-99.1.0.vsix
+code --install-extension wattsup-copilot-chat-99.1.0.vsix
 ```
