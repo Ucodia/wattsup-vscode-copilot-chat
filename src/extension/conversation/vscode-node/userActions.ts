@@ -56,7 +56,7 @@ export class UserFeedbackService implements IUserFeedbackService {
 		const conversation = result.metadata?.responseId && this.conversationStore.getConversation(result.metadata.responseId);
 
 		if (typeof conversation === 'object' && conversation.getLatestTurn().getMetadata(IntentInvocationMetadata)?.value?.location === ChatLocation.Editor) {
-			this._handleInlineChatUserAction(result.metadata?.sessionId, agentId, conversation, e, undefined);
+			this._handleChatUserAction(result.metadata?.sessionId, agentId, conversation, e, undefined);
 			return;
 		}
 
@@ -112,29 +112,6 @@ export class UserFeedbackService implements IUserFeedbackService {
 					codeBlockIndex: e.action.codeBlockIndex,
 					characterCount: e.action.totalCharacters,
 					newFile: e.action.newFile ? 1 : 0
-				});
-				break;
-			case 'runInTerminal':
-				/* __GDPR__
-					"panel.action.runinterminal" : {
-						"owner": "digitarald",
-						"comment": "Counts generic actions on a chat panel response",
-						"languageId": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Language of the currently open document." },
-						"requestId": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Id for this message request." },
-						"blockLanguage": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "comment": "Language of the code block in the response." },
-						"codeBlockIndex": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true, "comment": "Index of the code block in the response." },
-						"participant": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": false, "comment": "The name of the chat participant for this message." },
-						"command": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": false, "comment": "The command used for the chat participant." }
-					}
-				*/
-				this.telemetryService.sendMSFTTelemetryEvent('panel.action.runinterminal', {
-					languageId: document?.languageId,
-					requestId: result.metadata?.responseId,
-					blockLanguage: e.action.languageId,
-					participant: agentId,
-					command: result.metadata?.command,
-				}, {
-					codeBlockIndex: e.action.codeBlockIndex,
 				});
 				break;
 			case 'followUp':
@@ -298,7 +275,7 @@ export class UserFeedbackService implements IUserFeedbackService {
 		const conversation = result.metadata?.responseId && this.conversationStore.getConversation(result.metadata.responseId);
 
 		if (typeof conversation === 'object' && conversation.getLatestTurn().getMetadata(CopilotInteractiveEditorResponse)) {
-			this._handleInlineChatUserAction(result.metadata?.sessionId, agentId, conversation, undefined, e);
+			this._handleChatUserAction(result.metadata?.sessionId, agentId, conversation, undefined, e);
 			return;
 		}
 
@@ -342,7 +319,7 @@ export class UserFeedbackService implements IUserFeedbackService {
 	// --- inline
 
 
-	private _handleInlineChatUserAction(sessionId: string | undefined, _agentId: string, conversation: Conversation, event: vscode.ChatUserActionEvent | undefined, feedback: vscode.ChatResultFeedback | undefined) {
+	private _handleChatUserAction(sessionId: string | undefined, _agentId: string, conversation: Conversation, event: vscode.ChatUserActionEvent | undefined, feedback: vscode.ChatResultFeedback | undefined) {
 
 		enum InteractiveEditorResponseFeedbackKind {
 			Unhelpful = 0,
@@ -393,6 +370,9 @@ export class UserFeedbackService implements IUserFeedbackService {
 		let telemetryEventName: string;
 
 		const { selection, wholeRange, intent, query } = response.promptQuery;
+
+		// For panel requests, conversation.getLatestTurn() refers to the turn that was voted on
+		// (i.e. last message in the conversation _up to this point_), not the last message shown in the panel.
 		const requestId = conversation?.getLatestTurn().id;
 		const intentId = intent?.id;
 		const languageId = response.promptQuery.document.languageId;
@@ -405,6 +385,7 @@ export class UserFeedbackService implements IUserFeedbackService {
 		);
 		const isNotebookDocument = isNotebookCellOrNotebookChatInput(response.promptQuery.document.uri) ? 1 : 0;
 
+		// TODO: Fix the telemetry event name. This is hit by both inline and panel requests.
 		this.surveyService.signalUsage(`inline.${intentId ?? 'default'}`, languageId);
 
 		const sharedProps = {
@@ -472,6 +453,7 @@ export class UserFeedbackService implements IUserFeedbackService {
 					"isNotebook": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true, "comment": "Whether the document is a notebook" }
 				}
 			*/
+			// TODO: Fix the telemetry event name. This is hit by both inline and panel requests.
 			this.telemetryService.sendMSFTTelemetryEvent('inline.action.vote', {
 				...sharedProps,
 				reason: feedback?.unhelpfulReason,
@@ -502,12 +484,14 @@ export class UserFeedbackService implements IUserFeedbackService {
 					"isNotebook": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true, "comment": "Whether the document is a notebook." }
 				}
 			*/
+			// TODO: Fix the telemetry event name. This may be hit by both inline and panel requests.
 			this.telemetryService.sendMSFTTelemetryEvent('inline.done', sharedProps, {
 				...sharedMeasures, accepted
 			});
 			sendInternalTelemetryEvent('interactiveSessionDone', { accepted });
 		}
 
+		// TODO: Fix the telemetry event name. This is hit by both inline and panel requests.
 		switch (kind) {
 			case InteractiveEditorResponseFeedbackKind.Helpful:
 				userActionProperties['rating'] = 'positive';

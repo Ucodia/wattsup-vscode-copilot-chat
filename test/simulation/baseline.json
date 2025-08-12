@@ -940,9 +940,9 @@
   {
     "name": "edit (toolCalling) [panel] - does not read",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 6,
+    "failCount": 4,
+    "score": 0.6
   },
   {
     "name": "edit [inline] [cpp] - edit for cpp",
@@ -1586,9 +1586,9 @@
   {
     "name": "edit-inline2 [inline] [typescriptreact] - issue #7487",
     "contentFilterCount": 0,
-    "passCount": 8,
-    "failCount": 2,
-    "score": 0.8
+    "passCount": 9,
+    "failCount": 1,
+    "score": 0.9
   },
   {
     "name": "explain (expanded context) [panel] [cpp] - includes and interprets variables",
@@ -1712,37 +1712,37 @@
   {
     "name": "fetchWebPageTool (toolCalling) [panel] - multiple URLs boundary test with 6 URLs",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "fetchWebPageTool (toolCalling) [panel] - multiple URLs handling",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "fetchWebPageTool (toolCalling) [panel] - proper URL validation and query handling",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "fetchWebPageTool (toolCalling) [panel] - query parameter extraction",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "findFilesTool (toolCalling) [panel] - proper glob patterns",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 5,
+    "failCount": 5,
+    "score": 0.5
   },
   {
     "name": "fix (cpp) [inline] [cpp] - code fix for C++",
@@ -2587,9 +2587,9 @@
   {
     "name": "fix-inline2 (cpp) [inline] [cpp] - code fix for C++",
     "contentFilterCount": 0,
-    "passCount": 1,
-    "failCount": 9,
-    "score": 0.1
+    "passCount": 5,
+    "failCount": 5,
+    "score": 0.5
   },
   {
     "name": "fix-inline2 (eslint) [inline] [typescript] - (AML-10-1) do not access hasOwnProperty",
@@ -3098,9 +3098,9 @@
   {
     "name": "fix-inline2 (TSC) [inline] [typescript] - (AML-10-31) Parameter data implicitly has an any type.",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 9,
+    "failCount": 1,
+    "score": 0.9
   },
   {
     "name": "fix-inline2 (TSC) [inline] [typescript] - 22222 Error 2322 - type undefined is not assignable to type",
@@ -7763,9 +7763,9 @@
   {
     "name": "multifile-edit-claude [panel] [typescript] - fs provider: move function from one file to another - (claude-3.5-sonnet)",
     "contentFilterCount": 0,
-    "passCount": 4,
-    "failCount": 6,
-    "score": 0.4
+    "passCount": 5,
+    "failCount": 5,
+    "score": 0.5
   },
   {
     "name": "multifile-edit-claude [panel] [typescript] - import new helper function - (claude-3.5-sonnet)",
@@ -9264,9 +9264,9 @@
   {
     "name": "notebookEdits (modification - json) [panel] [python] - notebook code cell deletion",
     "contentFilterCount": 0,
-    "passCount": 6,
-    "failCount": 4,
-    "score": 0.6
+    "passCount": 7,
+    "failCount": 3,
+    "score": 0.7
   },
   {
     "name": "notebookEdits (modification - json) [panel] [python] - re-organize python imports to top of the notebook",
@@ -9481,58 +9481,58 @@
   {
     "name": "notebookEdits (modification - xml) [panel] [python] - re-organize python imports to top of the notebook",
     "contentFilterCount": 0,
-    "passCount": 8,
-    "failCount": 2,
-    "score": 0.8
+    "passCount": 9,
+    "failCount": 1,
+    "score": 0.9
   },
   {
     "name": "notebooks (toolCalling) [panel] - Edit cell tool",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "notebooks (toolCalling) [panel] - New Notebook Tool with EditFile and EditNotebook",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "notebooks (toolCalling) [panel] - New Notebook Tool without EditFile and with EditNotebook",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "notebooks (toolCalling) [panel] - New Notebook Tool without EditFile and without EditNotebook",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "notebooks (toolCalling) [panel] - Run cell at a specific index",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "notebooks (toolCalling) [panel] - Run cell tool",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "notebooks (toolCalling) [panel] - Run cell tool should avoid running markdown cells",
     "contentFilterCount": 0,
-    "passCount": 10,
-    "failCount": 0,
-    "score": 1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "PR Title and Description [context] - Multiple commits without issue information",
@@ -9957,9 +9957,9 @@
   {
     "name": "startDebugging [panel] -  chrome OS app port 3000",
     "contentFilterCount": 0,
-    "passCount": 0,
-    "failCount": 10,
-    "score": 0
+    "passCount": 10,
+    "failCount": 0,
+    "score": 1
   },
   {
     "name": "startDebugging [panel] -  node app",
@@ -11826,9 +11826,9 @@
   {
     "name": "toolCalling [panel] - find all phone numbers in markdown files in the codebase",
     "contentFilterCount": 0,
-    "passCount": 1,
-    "failCount": 9,
-    "score": 0.1
+    "passCount": 0,
+    "failCount": 10,
+    "score": 0
   },
   {
     "name": "toolCalling [panel] - I'm using git, create a new branch called issue-9876",
