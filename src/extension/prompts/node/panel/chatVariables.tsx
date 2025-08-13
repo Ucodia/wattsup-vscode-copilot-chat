@@ -244,8 +244,8 @@ class DiagnosticVariable extends PromptElement<IDiagnosticVariableProps> {
 		}
 
 		const altDocument = this.alternativeNotebookContent.create(this.alternativeNotebookContent.getFormat(this.endpoint)).getAlternativeDocument(notebook);
-		const start = altDocument.fromCellPosition(cell.index, range.start);
-		const end = altDocument.fromCellPosition(cell.index, range.end);
+		const start = altDocument.fromCellPosition(cell, range.start);
+		const end = altDocument.fromCellPosition(cell, range.end);
 		const newRange = new Range(start, end);
 		return [notebook.uri, newRange];
 	}
@@ -429,7 +429,7 @@ export class ChatToolReferences extends PromptElement<ChatToolCallProps, void> {
 							}
 						}
 					],
-					(tool, rule) => this.logService.logger.warn(`Tool ${tool} failed validation: ${rule}`)
+					(tool, rule) => this.logService.warn(`Tool ${tool} failed validation: ${rule}`)
 				),
 				tool_choice: {
 					type: 'function',

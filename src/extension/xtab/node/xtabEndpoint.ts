@@ -71,8 +71,7 @@ export class XtabEndpoint extends ChatEndpoint {
 			_authService,
 			_chatMLFetcher,
 			_tokenizerProvider,
-			_instantiationService,
-			_thinkingDataService
+			_instantiationService
 		);
 	}
 
@@ -89,6 +88,7 @@ export class XtabEndpoint extends ChatEndpoint {
 			throw new Error(message);
 		}
 		return {
+			'Authorization': `Bearer ${apiKey}`,
 			'api-key': apiKey,
 		};
 	}

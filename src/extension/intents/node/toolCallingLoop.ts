@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { Raw } from '@vscode/prompt-tsx';
-import type { CancellationToken, ChatRequest, ChatResponseProgressPart, ChatResponseReferencePart, ChatResponseStream, ChatResult, LanguageModelToolInformation, LanguageModelToolResult2, Progress } from 'vscode';
+import type { CancellationToken, ChatRequest, ChatResponseProgressPart, ChatResponseReferencePart, ChatResponseStream, ChatResult, LanguageModelToolInformation, Progress } from 'vscode';
 import { IAuthenticationChatUpgradeService } from '../../../platform/authentication/common/authenticationUpgrade';
 import { FetchStreamSource, IResponsePart } from '../../../platform/chat/common/chatMLFetcher';
 import { CanceledResult, ChatFetchResponseType, ChatResponse } from '../../../platform/chat/common/commonTypes';
@@ -14,13 +14,16 @@ import { ILogService } from '../../../platform/log/common/logService';
 import { FinishedCallback, OpenAiFunctionDef, OptionalChatRequestParams } from '../../../platform/networking/common/fetch';
 import { IRequestLogger } from '../../../platform/requestLogger/node/requestLogger';
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
+import { IThinkingDataService } from '../../../platform/thinking/node/thinkingDataService';
 import { tryFinalizeResponseStream } from '../../../util/common/chatResponseStreamImpl';
 import { CancellationError, isCancellationError } from '../../../util/vs/base/common/errors';
 import { Emitter } from '../../../util/vs/base/common/event';
 import { Disposable, DisposableStore } from '../../../util/vs/base/common/lifecycle';
+import { Mutable } from '../../../util/vs/base/common/types';
 import { URI } from '../../../util/vs/base/common/uri';
 import { generateUuid } from '../../../util/vs/base/common/uuid';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
+import { ChatResponsePullRequestPart, LanguageModelDataPart2, LanguageModelToolResult2, MarkdownString, ToolResultAudience } from '../../../vscodeTypes';
 import { InteractionOutcomeComputer } from '../../inlineChat/node/promptCraftingTypes';
 import { ChatVariablesCollection } from '../../prompt/common/chatVariablesCollection';
 import { Conversation, IResultMetadata, ResponseStreamParticipant, TurnStatus } from '../../prompt/common/conversation';
@@ -107,7 +110,8 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 		@ILogService protected readonly _logService: ILogService,
 		@IRequestLogger private readonly _requestLogger: IRequestLogger,
 		@IAuthenticationChatUpgradeService private readonly _authenticationChatUpgradeService: IAuthenticationChatUpgradeService,
-		@ITelemetryService private readonly _telemetryService: ITelemetryService,
+		@ITelemetryService protected readonly _telemetryService: ITelemetryService,
+		@IThinkingDataService private readonly _thinkingDataService: IThinkingDataService,
 	) {
 		super();
 	}
@@ -116,10 +120,10 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 	protected abstract buildPrompt(buildPromptContext: IBuildPromptContext, progress: Progress<ChatResponseReferencePart | ChatResponseProgressPart>, token: CancellationToken): Promise<IBuildPromptResult>;
 
 	/** Gets the tools that should be callable by the model. */
-	protected abstract getAvailableTools(): Promise<LanguageModelToolInformation[]>;
+	protected abstract getAvailableTools(outputStream: ChatResponseStream | undefined, token: CancellationToken): Promise<LanguageModelToolInformation[]>;
 
 	/** Creates the prompt context for the request. */
-	protected createPromptContext(availableTools: LanguageModelToolInformation[], outputStream: ChatResponseStream | undefined): IBuildPromptContext {
+	protected createPromptContext(availableTools: LanguageModelToolInformation[], outputStream: ChatResponseStream | undefined): Mutable<IBuildPromptContext> {
 		const { request } = this.options;
 		const chatVariables = new ChatVariablesCollection(request.references);
 
@@ -127,11 +131,13 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 		const query = isContinuation ?
 			'Please continue' :
 			this.turn.request.message;
+		// exclude turns from the history that errored due to prompt filtration
+		const history = this.options.conversation.turns.slice(0, -1).filter(turn => turn.responseStatus !== TurnStatus.PromptFiltered);
 
 		return {
 			requestId: this.turn.id,
 			query,
-			history: this.options.conversation.turns.slice(0, -1),
+			history,
 			toolCallResults: this.toolCallResults,
 			toolCallRounds: this.toolCallRounds,
 			editedFileEvents: this.options.request.editedFileEvents,
@@ -166,6 +172,7 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 	public async run(outputStream: ChatResponseStream | undefined, token: CancellationToken | PauseController): Promise<IToolCallLoopResult> {
 		let i = 0;
 		let lastResult: IToolCallSingleResult | undefined;
+		let lastRequestMessagesStartingIndexForRun: number | undefined;
 
 		while (true) {
 			if (lastResult && i++ >= this.options.toolCallLimit) {
@@ -175,6 +182,9 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 
 			try {
 				const result = await this.runOne(outputStream, i, token);
+				if (lastRequestMessagesStartingIndexForRun === undefined) {
+					lastRequestMessagesStartingIndexForRun = result.lastRequestMessages.length - 1;
+				}
 				lastResult = {
 					...result,
 					hadIgnoredFiles: lastResult?.hadIgnoredFiles || result.hadIgnoredFiles
@@ -196,9 +206,21 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 		}
 
 		this.emitReadFileTrajectories().catch(err => {
-			this._logService.logger.error('Error emitting read file trajectories', err);
+			this._logService.error('Error emitting read file trajectories', err);
 		});
 
+		const toolCallRoundsToDisplay = lastResult.lastRequestMessages.slice(lastRequestMessagesStartingIndexForRun ?? 0).filter((m): m is Raw.ToolChatMessage => m.role === Raw.ChatRole.Tool);
+		for (const toolRound of toolCallRoundsToDisplay) {
+			const result = this.toolCallResults[toolRound.toolCallId];
+			if (result instanceof LanguageModelToolResult2) {
+				for (const part of result.content) {
+					if (part instanceof LanguageModelDataPart2 && part.mimeType === 'application/pull-request+json' && part.audience?.includes(ToolResultAudience.User)) {
+						const data: { uri: string; title: string; description: string; author: string; linkTag: string } = JSON.parse(part.data.toString());
+						outputStream?.push(new ChatResponsePullRequestPart(URI.parse(data.uri), data.title, data.description, data.author, data.linkTag));
+					}
+				}
+			}
+		}
 		return { ...lastResult, toolCallRounds: this.toolCallRounds, toolCallResults: this.toolCallResults };
 	}
 
@@ -287,9 +309,16 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 
 	private hitToolCallLimit(stream: ChatResponseStream | undefined, lastResult: IToolCallSingleResult) {
 		if (stream && this.options.onHitToolCallLimit === ToolCallLimitBehavior.Confirm) {
+			const messageString = new MarkdownString(l10n.t({
+				message: 'Copilot has been working on this problem for a while. It can continue to iterate, or you can send a new message to refine your prompt. [Configure max requests]({0}).',
+				args: [`command:workbench.action.openSettings?${encodeURIComponent('["chat.agent.maxRequests"]')}`],
+				comment: 'Link to workbench settings for chat.maxRequests, which controls the maximum number of requests Copilot will make before stopping. This is used in the tool calling loop to determine when to stop iterating on a problem.'
+			}));
+			messageString.isTrusted = { enabledCommands: ['workbench.action.openSettings'] };
+
 			stream.confirmation(
 				l10n.t('Continue to iterate?'),
-				l10n.t('Copilot has been working on this problem for a while. It can continue to iterate, or you can send a new message to refine your prompt.'),
+				messageString,
 				{ copilotRequestedRoundLimit: Math.round(this.options.toolCallLimit * 3 / 2) } satisfies IToolCallIterationIncrease,
 				[
 					l10n.t('Continue'),
@@ -311,14 +340,14 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 
 	/** Runs a single iteration of the tool calling loop. */
 	public async runOne(outputStream: ChatResponseStream | undefined, iterationNumber: number, token: CancellationToken | PauseController): Promise<IToolCallSingleResult> {
-		let availableTools = await this.getAvailableTools();
+		let availableTools = await this.getAvailableTools(outputStream, token);
 		const context = this.createPromptContext(availableTools, outputStream);
 		const isContinuation = context.isContinuation || false;
 		const buildPromptResult: IBuildPromptResult = await this.buildPrompt2(context, outputStream, token);
 		await this.throwIfCancelled(token);
 		this.turn.addReferences(buildPromptResult.references);
 		// Possible the tool call resulted in new tools getting added.
-		availableTools = await this.getAvailableTools();
+		availableTools = await this.getAvailableTools(outputStream, token);
 
 		const isToolInputFailure = buildPromptResult.metadata.get(ToolFailureEncountered);
 		const conversationSummary = buildPromptResult.metadata.get(SummarizedConversationHistoryMetadata);
@@ -328,7 +357,7 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 		const promptTokenLength = await (await this._endpointProvider.getChatEndpoint(this.options.request)).acquireTokenizer().countMessagesTokens(buildPromptResult.messages);
 		await this.throwIfCancelled(token);
 		this._onDidBuildPrompt.fire({ result: buildPromptResult, tools: availableTools, promptTokenLength });
-		this._logService.logger.trace('Built prompt');
+		this._logService.trace('Built prompt');
 
 		// todo@connor4312: can interaction outcome logic be implemented in a more generic way?
 		const interactionOutcomeComputer = new InteractionOutcomeComputer(this.options.interactionContext);
@@ -350,7 +379,7 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 			}
 		}();
 
-		this._logService.logger.trace('Sending prompt to model');
+		this._logService.trace('Sending prompt to model');
 
 		const streamParticipants = outputStream ? [outputStream] : [];
 		let fetchStreamSource: FetchStreamSource | undefined;
@@ -419,12 +448,12 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 			},
 			{
 				tools: promptContextTools?.map(tool => ({
-					function:
-					{
+					function: {
 						name: tool.name,
 						description: tool.description,
 						parameters: tool.parameters && Object.keys(tool.parameters).length ? tool.parameters : undefined
-					}, type: 'function'
+					},
+					type: 'function',
 				})),
 			},
 			iterationNumber === 0 && !isContinuation,
@@ -456,12 +485,12 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 					fetchResult.value,
 					toolCalls,
 					toolInputRetry,
-					undefined
+					undefined,
 				),
 				chatResult,
 				hadIgnoredFiles: buildPromptResult.hasIgnoredFiles,
 				lastRequestMessages: buildPromptResult.messages,
-				availableToolCount: availableTools.length
+				availableTools,
 			};
 		}
 
@@ -469,7 +498,7 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 			response: fetchResult,
 			hadIgnoredFiles: buildPromptResult.hasIgnoredFiles,
 			lastRequestMessages: buildPromptResult.messages,
-			availableToolCount: availableTools.length,
+			availableTools,
 			round: new ToolCallRound('', toolCalls, toolInputRetry, undefined)
 		};
 	}
@@ -543,7 +572,7 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 
 		if (filterReasons.length) {
 			const filterReasonsStr = filterReasons.join(', ');
-			this._logService.logger.warn('Filtered invalid tool messages: ' + filterReasonsStr);
+			this._logService.warn('Filtered invalid tool messages: ' + filterReasonsStr);
 			/* __GDPR__
 					"toolCalling.invalidToolMessages" : {
 						"owner": "roblourens",
@@ -615,7 +644,8 @@ export abstract class ToolCallingLoop<TOptions extends IToolCallingLoopOptions =
 		}
 
 		if (originalCall) {
-			this._requestLogger.logToolCall(originalCall?.id || generateUuid(), originalCall?.name, originalCall?.arguments, metadata.result);
+			const thinking = this._thinkingDataService.get(originalCall.id);
+			this._requestLogger.logToolCall(originalCall.id || generateUuid(), originalCall.name, originalCall.arguments, metadata.result, thinking);
 		}
 	}
 }
@@ -638,7 +668,7 @@ export interface IToolCallSingleResult {
 	chatResult?: ChatResult; // TODO should just be metadata
 	hadIgnoredFiles: boolean;
 	lastRequestMessages: Raw.ChatMessage[];
-	availableToolCount: number;
+	availableTools: readonly LanguageModelToolInformation[];
 }
 
 export interface IToolCallLoopResult extends IToolCallSingleResult {

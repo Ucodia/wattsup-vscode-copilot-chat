@@ -32,6 +32,7 @@ import { CopilotDebugCommandContribution } from '../../onboardDebug/vscode-node/
 import { OnboardTerminalTestsContribution } from '../../onboardDebug/vscode-node/onboardTerminalTestsContribution';
 import { DebugCommandsContribution } from '../../prompt/vscode-node/debugCommands';
 import { RenameSuggestionsContrib } from '../../prompt/vscode-node/renameSuggestions';
+import { PromptFileContextContribution } from '../../promptFileContext/vscode-node/promptFileContextService';
 import { RelatedFilesProviderContribution } from '../../relatedFiles/vscode-node/relatedFiles.contribution';
 import { SearchPanelCommands } from '../../search/vscode-node/commands';
 import { SettingsSchemaFeature } from '../../settingsSchema/vscode-node/settingsSchemaFeature';
@@ -73,6 +74,7 @@ export const vscodeNodeContributions: IExtensionContributionFactory[] = [
 	asContributionFactory(SearchPanelCommands),
 	asContributionFactory(ChatQuotaContribution),
 	asContributionFactory(NotebookFollowCommands),
+	asContributionFactory(PromptFileContextContribution),
 	workspaceIndexingContribution,
 ];
 
