@@ -56,7 +56,7 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		this._register(this.fetchTimer);
 		this._register(vscode.window.registerWebviewViewProvider('copilot-wattsup', this));
 
-		this._storageDir = vscode.Uri.joinPath(this.context.globalStorageUri, 'wattsup').fsPath;
+		this._storageDir = vscode.Uri.joinPath(this.context.globalStorageUri, '..', 'wattsup').fsPath;
 		this._usageDatabase = this._register(new WattsupUsageDatabase(this._storageDir));
 	}
 
