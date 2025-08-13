@@ -15,8 +15,8 @@ Since this extension cannot be released in the VS Code marketplace, you will nee
 ### From command line
 
 ```
-wget https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases/download/v99.1.1/wattsup-copilot-chat-99.1.1.vsix
-code --install-extension wattsup-copilot-chat-99.1.1.vsix
+wget https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases/download/v99.2.0/wattsup-copilot-chat-99.2.0.vsix
+code --install-extension wattsup-copilot-chat-99.2.0.vsix
 ```
 
 ## Development
