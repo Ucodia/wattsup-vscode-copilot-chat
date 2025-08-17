@@ -7,7 +7,7 @@
 			body {
 				padding: 0 16px 0 16px;
 				color: var(--vscode-foreground);
-				font-family: var(--vscode-font-family);
+				font-family: var(--vscode-fon	t-family);
 				font-size: var(--vscode-font-size);
 				line-height: 1.6;
 			}
@@ -18,6 +18,13 @@
 				margin: 16px 0 16px 0;
 				color: var(--vscode-foreground);
 				text-transform: uppercase;
+			}
+
+			.container {
+				min-height: 100vh;
+				display: flex;
+				flex-direction: column;
+				justify-content: space-between;
 			}
 
 			.section {
@@ -157,70 +164,79 @@
 		</style>
 	</head>
 	<body>
-		<section class="section">
-			<div style="display: flex; gap: 8px; flex-wrap: wrap">
-				<select class="dropdown" id="periodSelect">
-					<option value="hour">Last hour</option>
-					<option value="day">Last day</option>
-					<option value="week">Last week</option>
-					<option value="month">Last month</option>
-				</select>
-				<select class="dropdown" id="metricSelect">
-					<option value="energy">Energy usage</option>
-					<option value="gwp">CO2 emissions</option>
-					<option value="tokens">Output tokens</option>
-				</select>
-			</div>
-		</section>
+		<div class="container">
+			<main>
+				<section class="section">
+					<div style="display: flex; gap: 8px; flex-wrap: wrap">
+						<select class="dropdown" id="periodSelect">
+							<option value="hour">Last hour</option>
+							<option value="day">Last day</option>
+							<option value="week">Last week</option>
+							<option value="month">Last month</option>
+						</select>
+						<select class="dropdown" id="metricSelect">
+							<option value="energy">Energy usage</option>
+							<option value="gwp">CO2 emissions</option>
+							<option value="tokens">Output tokens</option>
+						</select>
+					</div>
+				</section>
 
-		<section class="section">
-			<h2>TOTALS</h2>
-			<div class="totals-grid">
-				<div class="total-box">
-					<div class="total-icon">⚡</div>
-					<div class="total-content">
-						<div class="total-value" id="totalEnergy">-</div>
-						<div class="total-label">Energy usage (Wh)</div>
+				<section class="section">
+					<h2>Totals</h2>
+					<div class="totals-grid">
+						<div class="total-box">
+							<div class="total-icon">⚡</div>
+							<div class="total-content">
+								<div class="total-value" id="totalEnergy">
+									-
+								</div>
+								<div class="total-label">Energy usage (Wh)</div>
+							</div>
+						</div>
+						<div class="total-box">
+							<div class="total-icon">🌱</div>
+							<div class="total-content">
+								<div class="total-value" id="totalGwp">-</div>
+								<div class="total-label">
+									CO2 emissions (gCO2eq)
+								</div>
+							</div>
+						</div>
+						<div class="total-box">
+							<div class="total-icon">🔤</div>
+							<div class="total-content">
+								<div class="total-value" id="totalTokens">
+									-
+								</div>
+								<div class="total-label">Output tokens</div>
+							</div>
+						</div>
+						<div class="total-box">
+							<div class="total-icon">📊</div>
+							<div class="total-content">
+								<div class="total-value" id="totalCount">-</div>
+								<div class="total-label">Request count</div>
+							</div>
+						</div>
 					</div>
-				</div>
-				<div class="total-box">
-					<div class="total-icon">🌱</div>
-					<div class="total-content">
-						<div class="total-value" id="totalGwp">-</div>
-						<div class="total-label">CO2 emissions (gCO2eq)</div>
-					</div>
-				</div>
-				<div class="total-box">
-					<div class="total-icon">🔤</div>
-					<div class="total-content">
-						<div class="total-value" id="totalTokens">-</div>
-						<div class="total-label">Output tokens</div>
-					</div>
-				</div>
-				<div class="total-box">
-					<div class="total-icon">📊</div>
-					<div class="total-content">
-						<div class="total-value" id="totalCount">-</div>
-						<div class="total-label">Request count</div>
-					</div>
-				</div>
-			</div>
-		</section>
+				</section>
 
-		<section class="section">
-			<h2>EQUIVALENCE</h2>
-			<div class="equivalence-grid" id="equivalenceGrid"></div>
-		</section>
+				<section class="section">
+					<h2>Equivalence</h2>
+					<div class="equivalence-grid" id="equivalenceGrid"></div>
+				</section>
 
-		<section class="section">
-			<h2>STATISTICS</h2>
-			<select class="dropdown" id="modelSelect">
-				<option value="all">All models</option>
-			</select>
-			<div class="stats-chart">
-				<canvas id="statsChart"></canvas>
-			</div>
-		</section>
+				<section class="section">
+					<h2>Usage by model</h2>
+					<select class="dropdown" id="modelSelect">
+						<option value="all">All models</option>
+					</select>
+					<div class="stats-chart">
+						<canvas id="statsChart"></canvas>
+					</div>
+				</section>
+			</main>
 
 		<footer>
 			<div style="text-align: center; font-size: 0.85em; padding: 16px 0">
