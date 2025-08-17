@@ -26,9 +26,9 @@ export interface Usage {
 
 export interface Equivalence {
 	label: string;
-	unit: string;
 	emoji: string;
-	kgCO2eq: number;
+	value: number;
+	unit: string;
 	enabled: boolean;
 }
 
@@ -231,14 +231,17 @@ export class WattsupUsageDatabase extends Disposable {
 		let intervalMs: number;
 		let periodCount: number;
 
-		if (period === 'hourly') {
-			intervalMs = 5 * 60 * 1000;
+		if (period === 'hour') {
+			intervalMs = 5 * 60 * 1000; // 5 min
 			periodCount = 12;
-		} else if (period === 'daily') {
-			intervalMs = 60 * 60 * 1000;
+		} else if (period === 'day') {
+			intervalMs = 60 * 60 * 1000; // 1 h
 			periodCount = 24;
-		} else if (period === 'monthly') {
-			intervalMs = 24 * 60 * 60 * 1000;
+		} else if (period === 'week') {
+			intervalMs = 24 * 60 * 60 * 1000; // 1 day
+			periodCount = 7;
+		} else if (period === 'month') {
+			intervalMs = 24 * 60 * 60 * 1000; // 1 day
 			periodCount = 30;
 		} else {
 			throw new Error(`Invalid time period: ${period}`);
@@ -314,7 +317,7 @@ export class WattsupUsageDatabase extends Disposable {
 
 		const equivalences = equivalencesData.filter(eq => eq.enabled).map(eq => ({
 			equivalence: eq,
-			value: usageTotals.gwp_total / eq.kgCO2eq
+			value: eq.unit === "kgCO2eq" ? usageTotals.gwp_total / eq.value : usageTotals.energy_total / eq.value
 		}));
 
 		return {

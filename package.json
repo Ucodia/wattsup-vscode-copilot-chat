@@ -3365,7 +3365,7 @@
 			"copilot-wattsup": [
 				{
 					"id": "copilot-wattsup",
-					"name": "Wattsup",
+					"name": "Dashboard",
 					"icon": "assets/wattsup.svg",
 					"type": "webview"
 				}

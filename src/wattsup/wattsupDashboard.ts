@@ -43,7 +43,7 @@ function getProviderAndModelName(originalModelName: string): ModelMapping {
 export class WattsupDashboard extends Disposable implements vscode.WebviewViewProvider, IExtensionContribution {
 	readonly id = 'wattsupDashboard';
 	private _webviewView: vscode.WebviewView | undefined;
-	private _currentPeriod: string = 'daily';
+	private _currentPeriod: string = 'day';
 	private _processedRequests: string[] = [];
 	private _usageDatabase: WattsupUsageDatabase;
 	private _storageDir: string;

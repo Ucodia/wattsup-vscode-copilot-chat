@@ -159,26 +159,17 @@
 	<body>
 		<section class="section">
 			<div style="display: flex; gap: 8px; flex-wrap: wrap">
+				<select class="dropdown" id="periodSelect">
+					<option value="hour">Last hour</option>
+					<option value="day">Last day</option>
+					<option value="week">Last week</option>
+					<option value="month">Last month</option>
+				</select>
 				<select class="dropdown" id="metricSelect">
 					<option value="energy">Energy usage</option>
 					<option value="gwp">CO2 emissions</option>
 					<option value="tokens">Output tokens</option>
 				</select>
-				<select class="dropdown" id="modelSelect">
-					<option value="all">All models</option>
-				</select>
-				<select class="dropdown" id="periodSelect">
-					<option value="hourly">Last hour</option>
-					<option value="daily" selected>Last day</option>
-					<option value="monthly">Last month</option>
-				</select>
-			</div>
-		</section>
-
-		<section class="section">
-			<h2>STATISTICS</h2>
-			<div class="stats-chart">
-				<canvas id="statsChart"></canvas>
 			</div>
 		</section>
 
@@ -222,17 +213,20 @@
 		</section>
 
 		<section class="section">
-			<div
-				style="
-					text-align: center;
-					color: var(--vscode-descriptionForeground);
-					font-size: 0.85em;
-					padding: 16px 0;
-				"
-			>
-				Powered by EcoLogits 🌱
+			<h2>STATISTICS</h2>
+			<select class="dropdown" id="modelSelect">
+				<option value="all">All models</option>
+			</select>
+			<div class="stats-chart">
+				<canvas id="statsChart"></canvas>
 			</div>
 		</section>
+
+		<footer>
+			<div style="text-align: center; font-size: 0.85em; padding: 16px 0">
+				Powered by EcoLogits 🌱
+			</div>
+		</footer>
 
 		<script>
 			(function () {
@@ -295,7 +289,7 @@
 					},
 				});
 
-				let currentPeriod = 'daily';
+				let currentPeriod = 'day';
 				let currentMetric = 'energy';
 				let currentModel = 'all';
 				let statsData = null;
@@ -371,12 +365,12 @@
 
 					const labels = statsData.aggregates.labels.map((label) => {
 						const date = new Date(label);
-						if (currentPeriod === 'hourly') {
+						if (currentPeriod === 'hour') {
 							return date.toLocaleTimeString([], {
 								hour: '2-digit',
 								minute: '2-digit',
 							});
-						} else if (currentPeriod === 'daily') {
+						} else if (currentPeriod === 'day') {
 							return date.toLocaleTimeString([], {
 								hour: '2-digit',
 							});

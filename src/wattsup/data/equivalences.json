@@ -1,44 +1,37 @@
 [
 	{
 		"label": "km driven in a car",
-		"unit": "km",
 		"emoji": "🚗",
-		"kgCO2eq": 0.249,
+		"value": 0.249,
+		"unit": "kgCO2eq",
 		"enabled": true
 	},
 	{
 		"label": "smartphones charged",
-		"unit": "cycles",
 		"emoji": "📱",
-		"kgCO2eq": 0.0124,
+		"value": 0.0124,
+		"unit": "kgCO2eq",
 		"enabled": true
 	},
 	{
-		"label": "min of YouTube streamed",
-		"unit": "min",
+		"label": "hours of YouTube streamed",
 		"emoji": "📺",
-		"kgCO2eq": 0.0006,
-		"enabled": true
-	},
-	{
-		"label": "Paris-NYC flights",
-		"unit": "flights",
-		"emoji": "✈️",
-		"kgCO2eq": 909.6,
-		"enabled": false
-	},
-	{
-		"label": "h of LED bulb",
-		"unit": "h",
-		"emoji": "💡",
-		"kgCO2eq": 0.00436,
+		"value": 0.036,
+		"unit": "kgCO2eq",
 		"enabled": false
 	},
 	{
 		"label": "km in a bullet train",
-		"unit": "km",
 		"emoji": "🚄",
-		"kgCO2eq": 0.0032,
+		"value": 0.0032,
+		"unit": "kgCO2eq",
+		"enabled": true
+	},
+	{
+		"label": "hours running a microwave",
+		"emoji": "⏲️️",
+		"value": 1,
+		"unit": "kw",
 		"enabled": true
 	}
 ]
