@@ -2030,6 +2030,10 @@
 			{
 				"command": "github.copilot.chat.manageBYOK",
 				"title": "Manage Bring Your Own Key Vendor"
+			},
+			{
+				"command": "wattsup.exportUsage",
+				"title": "Wattsup: Export usage data to CSV"
 			}
 		],
 		"configuration": [

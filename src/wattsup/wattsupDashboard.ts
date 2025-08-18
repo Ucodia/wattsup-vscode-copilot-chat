@@ -46,7 +46,7 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 	private _currentPeriod: string = 'day';
 	private _processedRequests: string[] = [];
 	private _usageDatabase: WattsupUsageDatabase;
-	private _storageDir: string;
+	private _storageDir: vscode.Uri;
 
 	constructor(@IVSCodeExtensionContext private readonly context: IVSCodeExtensionContext,
 		@IRequestLogger private readonly requestLogger: IRequestLogger,
@@ -56,8 +56,21 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 		this._register(this.fetchTimer);
 		this._register(vscode.window.registerWebviewViewProvider('copilot-wattsup', this));
 
-		this._storageDir = vscode.Uri.joinPath(this.context.globalStorageUri, '..', 'wattsup').fsPath;
-		this._usageDatabase = this._register(new WattsupUsageDatabase(this._storageDir));
+		this._storageDir = vscode.Uri.joinPath(this.context.globalStorageUri, '..', 'wattsup');
+		this._usageDatabase = this._register(new WattsupUsageDatabase(this._storageDir.fsPath));
+
+		this._register(vscode.commands.registerCommand('wattsup.exportUsage', async () => {
+			const csvPath = vscode.Uri.joinPath(this._storageDir, 'usage.csv');
+			const exportUri = await vscode.window.showSaveDialog({
+				defaultUri: vscode.Uri.file('wattsup-vscode-copilot-usage.csv'),
+				filters: { 'CSV': ['csv'] }
+			});
+			if (!exportUri) {
+				return;
+			}
+			await vscode.workspace.fs.copy(csvPath, exportUri, { overwrite: true });
+			vscode.window.showInformationMessage(`Usage downloaded to ${exportUri.fsPath}`);
+		}));
 	}
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
