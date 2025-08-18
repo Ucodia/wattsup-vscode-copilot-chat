@@ -5,40 +5,8 @@ import { IVSCodeExtensionContext } from '../platform/extContext/common/extension
 import { ILoggedRequestInfo, IRequestLogger, LoggedInfoKind } from '../platform/requestLogger/node/requestLogger';
 import { IntervalTimer } from '../util/vs/base/common/async';
 import { Disposable } from '../util/vs/base/common/lifecycle';
-import llmImpact from './llmImpact';
+import { findModel, findProviderByModel, llmImpact } from './llmImpact';
 import { Usage, WattsupUsageDatabase } from './wattsupUsageDatabase';
-
-interface ModelMapping {
-	provider: string;
-	model: string;
-}
-
-const modelMap: Record<string, ModelMapping> = {
-	// anthropic
-	"claude-3.5-sonnet": { provider: "anthropic", model: "claude-3-5-sonnet-latest" },
-	"claude-3.7-sonnet-thought": { provider: "anthropic", model: "claude-3-7-sonnet-latest" },
-	"claude-3.7-sonnet": { provider: "anthropic", model: "claude-3-7-sonnet-latest" },
-	"claude-sonnet-4": { provider: "anthropic", model: "claude-3-7-sonnet-latest" },
-	// google
-	"gemini-2.0-flash-001": { provider: "google", model: "gemini-2.0-flash-001" },
-	// openai
-	"gpt-4.1": { provider: "openai", model: "gpt-4" },
-	"gpt-4o": { provider: "openai", model: "gpt-4o" },
-	"gpt-4o-mini": { provider: "openai", model: "gpt-4o-mini" },
-	"o1-mini": { provider: "openai", model: "o1-mini" },
-	"o3-mini": { provider: "openai", model: "o1-mini" },
-	"o4-mini": { provider: "openai", model: "o1-mini" },
-};
-
-function getProviderAndModelName(originalModelName: string): ModelMapping {
-	if (originalModelName in modelMap) {
-		return modelMap[originalModelName];
-	} else {
-		throw new Error(
-			`Could not find estimation for model name: ${originalModelName}.`
-		);
-	}
-}
 
 export class WattsupDashboard extends Disposable implements vscode.WebviewViewProvider, IExtensionContribution {
 	readonly id = 'wattsupDashboard';
@@ -138,11 +106,17 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 				data.latency = (entry.endTime && entry.startTime) ? entry.endTime - entry.startTime : 0;
 
 				try {
-					const { model, provider } = getProviderAndModelName(data.model!);
-					data.provider = provider;
-					data.estimation_model = model;
+					const provider = findProviderByModel(data.model!);
+					const estimationModel = findModel(provider!, data.model!);
 
-					const impact = llmImpact(provider, model, data.output_token!, data.latency!);
+					if (!estimationModel) {
+						throw new Error(`Could not find model and provider for ${data.model}`)
+					}
+
+					data.provider = estimationModel.provider;
+					data.estimation_model = estimationModel.name;
+
+					const impact = llmImpact(data.provider!, data.estimation_model!, data.output_token!, data.latency!);
 					data.energy_min = impact.energy.min;
 					data.energy_max = impact.energy.max;
 					data.gwp_min = impact.gwp.min;
@@ -152,7 +126,7 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 					data.pe_min = impact.pe.min;
 					data.pe_max = impact.pe.max;
 				} catch (error) {
-					console.warn(`[wattsup] Could not process model ${data.model}, skipping impact calculation`);
+					console.warn(`[wattsup] Could not process usage for model ${data.model}, skipping impact calculation`);
 					data.provider = 'unknown';
 				}
 

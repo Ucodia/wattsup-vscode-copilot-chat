@@ -31,14 +31,25 @@ function ltRange(a: number | RangeValue, b: number): boolean {
 	return ra.max < b;
 }
 
-function findModel(provider: string, name: string) {
+export function findModel(provider: string, name: string) {
 	const alias = (models.aliases || []).find((a: any) => a.provider === provider && a.name === name);
 	if (alias) name = alias.alias;
 	return (models.models || []).find((m: any) => m.provider === provider && m.name === name);
 }
 
+export function findProviderByModel(modelName: string): string | undefined {
+	const lowerModelName = modelName.toLowerCase();
+	if (lowerModelName.startsWith('gpt-') || lowerModelName.startsWith('o1-') || lowerModelName.startsWith('o3-') || lowerModelName.startsWith('o4-')) {
+		return 'openai';
+	} else if (lowerModelName.startsWith('claude-')) {
+		return 'anthropic';
+	} else if (lowerModelName.startsWith('gemini-')) {
+		return 'google';
+	}
+}
+
 function findMix(zone: string) {
-	return electricityMixes[zone as keyof typeof electricityMixes];
+	return electricityMixes.find(mix => mix.name === zone);
 }
 
 const MODEL_QUANTIZATION_BITS = 4;
@@ -172,7 +183,7 @@ function computeLLMImpacts(opts: { activeParams: number | RangeValue; totalParam
 
 type Impact = ReturnType<typeof computeLLMImpacts>;
 
-export default function llmImpact(provider: string, modelName: string, outputTokenCount: number, requestLatency: number, electricityMixZone: string = 'WOR'): Impact {
+export function llmImpact(provider: string, modelName: string, outputTokenCount: number, requestLatency: number, electricityMixZone: string = 'WOR'): Impact {
 	const model = findModel(provider, modelName);
 	if (!model) {
 		throw new Error(`Could not find model \`${modelName}\` for ${provider} provider.`);
