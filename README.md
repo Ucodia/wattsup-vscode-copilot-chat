@@ -15,8 +15,8 @@ Since this extension cannot be released in the VS Code marketplace, you will nee
 ### From command line
 
 ```
-wget https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases/download/v99.3.0/wattsup-copilot-chat-99.3.0.vsix
-code --install-extension wattsup-copilot-chat-99.3.0.vsix
+wget https://github.com/Ucodia/wattsup-vscode-copilot-chat/releases/download/v99.4.0/wattsup-copilot-chat-99.4.0.vsix
+code --install-extension wattsup-copilot-chat-99.4.0.vsix
 ```
 
 ## Development
@@ -40,6 +40,19 @@ The official `vscode-copilot-chat` extension from which this repository is forke
 Microsoft team confirmed that they are actively working on open sourcing the remaining bits from closed source component (see [GitHub issue](https://github.com/microsoft/vscode/issues/258742)).
 
 If you want to build this from source, make sure to switch the [package.json](package.json#L10) `buildType` is set to `prod` before running `npm run package`.
+
+### Updating models data
+
+Wattsup relies on Ecologits to estimate energy usage and CO2 emissions. As such there are data files that may need to be synchronized from time to time.
+
+Data can be updated such as:
+
+```
+curl https://raw.githubusercontent.com/genai-impact/ecologits/refs/heads/main/ecologits/data/models.json > src/wattsup/data/models.json
+curl https://raw.githubusercontent.com/genai-impact/ecologits/refs/heads/main/ecologits/data/electricity_mixes.csv > src/wattsup/data/electricity_mixes.csv
+npx csvtojson --checkType=true src/wattsup/data/electricity_mixes.csv > src/wattsup/data/electricity_mixes.json
+rm src/wattsup/data/electricity_mixes.csv
+```
 
 ### Synchronizing upstream releases
 
