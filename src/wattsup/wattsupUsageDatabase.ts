@@ -100,23 +100,25 @@ export class WattsupUsageDatabase extends Disposable {
 
 	private setupFileWatcher(): void {
 		try {
-			// check if vscode.workspace is available (not in test environment)
-			if (typeof vscode !== 'undefined' && vscode.workspace && vscode.workspace.createFileSystemWatcher) {
-				this._fileWatcher = vscode.workspace.createFileSystemWatcher(
-					new vscode.RelativePattern(vscode.Uri.file(this.storageDir), '*.csv'),
-					true,
-					false,
-					true
-				);
-
-				this._register(this._fileWatcher.onDidChange((uri) => {
-					if (uri.fsPath === this._csvFilePath) {
-						this.handleFileChange();
-					}
-				}));
-
-				this._register(this._fileWatcher);
+			// TODO: remove this hack with proper mocking in unit test
+			if (!(typeof vscode !== 'undefined' && vscode.workspace && vscode.workspace.createFileSystemWatcher)) {
+				return;
 			}
+
+			this._fileWatcher = vscode.workspace.createFileSystemWatcher(
+				new vscode.RelativePattern(vscode.Uri.file(this.storageDir), '*.csv'),
+				true,
+				false,
+				true
+			);
+
+			this._register(this._fileWatcher.onDidChange((uri) => {
+				if (uri.fsPath === this._csvFilePath) {
+					this.handleFileChange();
+				}
+			}));
+
+			this._register(this._fileWatcher);
 		} catch (error) {
 			console.error('[wattsup] Error setting up file watcher:', error);
 		}

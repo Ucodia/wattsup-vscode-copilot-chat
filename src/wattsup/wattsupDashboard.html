@@ -174,11 +174,6 @@
 							<option value="week">Last week</option>
 							<option value="month">Last month</option>
 						</select>
-						<select class="dropdown" id="metricSelect">
-							<option value="energy">Energy usage</option>
-							<option value="gwp">CO2 emissions</option>
-							<option value="tokens">Output tokens</option>
-						</select>
 					</div>
 				</section>
 
@@ -228,10 +223,17 @@
 				</section>
 
 				<section class="section">
-					<h2>Usage by model</h2>
-					<select class="dropdown" id="modelSelect">
-						<option value="all">All models</option>
-					</select>
+					<h2>Stats by model</h2>
+					<div style="display: flex; gap: 8px; flex-wrap: wrap">
+						<select class="dropdown" id="metricSelect">
+							<option value="energy">Energy usage</option>
+							<option value="gwp">CO2 emissions</option>
+							<option value="tokens">Output tokens</option>
+						</select>
+						<select class="dropdown" id="modelSelect">
+							<option value="all">All models</option>
+						</select>
+					</div>
 					<div class="stats-chart">
 						<canvas id="statsChart"></canvas>
 					</div>
