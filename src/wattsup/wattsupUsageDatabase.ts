@@ -182,7 +182,7 @@ export class WattsupUsageDatabase extends Disposable {
 		}
 	}
 
-	async addUsage(usages: Usage[]): Promise<void> {
+	async addUsages(usages: Usage[]): Promise<void> {
 		if (usages.length === 0) {
 			return;
 		}
@@ -222,6 +222,73 @@ export class WattsupUsageDatabase extends Disposable {
 			this._lastFileSize = fs.statSync(this._csvFilePath).size;
 		} catch (error) {
 			console.error('[wattsup] Error adding usage data:', error);
+			throw error;
+		} finally {
+			this.releaseLock();
+		}
+	}
+
+	getUsages(): Usage[] {
+		return this._usageTable.objects() as Usage[];
+	}
+
+	async updateUsage(usage: Usage): Promise<void> {
+		await this.updateUsages([usage]);
+	}
+
+	async updateUsages(usages: Usage[]): Promise<void> {
+		if (usages.length === 0) {
+			return;
+		}
+
+		try {
+			await this.acquireLock();
+
+			// Create a map of updates for efficient lookup
+			const updatesMap = new Map(usages.map(u => [u.id, u]));
+
+			// Update the in-memory table
+			const updatedTable = this._usageTable.derive({
+				energy_min: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.energy_min : d.energy_min),
+				energy_max: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.energy_max : d.energy_max),
+				gwp_min: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.gwp_min : d.gwp_min),
+				gwp_max: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.gwp_max : d.gwp_max),
+				adpe_min: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.adpe_min : d.adpe_min),
+				adpe_max: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.adpe_max : d.adpe_max),
+				pe_min: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.pe_min : d.pe_min),
+				pe_max: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.pe_max : d.pe_max),
+				provider: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.provider : d.provider),
+				estimation_model: aq.escape((d: any) => updatesMap.has(d.id) ? updatesMap.get(d.id)!.estimation_model : d.estimation_model)
+			});
+
+			this._usageTable = updatedTable;
+
+			// Rewrite the entire CSV file with updated data
+			const allUsages = this._usageTable.objects() as Usage[];
+			const csvLines = [csvHeader.join(',')];
+			csvLines.push(...allUsages.map(u => [
+				u.id,
+				u.timestamp,
+				u.provider,
+				u.model,
+				u.estimation_model,
+				u.input_token,
+				u.output_token,
+				u.latency,
+				u.energy_min,
+				u.energy_max,
+				u.gwp_min,
+				u.gwp_max,
+				u.adpe_min,
+				u.adpe_max,
+				u.pe_min,
+				u.pe_max
+			].join(',')));
+
+			fs.writeFileSync(this._csvFilePath, csvLines.join('\n') + '\n');
+			this._lastFileSize = fs.statSync(this._csvFilePath).size;
+		} catch (error) {
+			console.error('[wattsup] Error updating usage data:', error);
 			throw error;
 		} finally {
 			this.releaseLock();

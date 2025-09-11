@@ -49,7 +49,7 @@ describe('WattsupUsageDatabase', () => {
 			}
 		];
 
-		await database.addUsage(usageData);
+		await database.addUsages(usageData);
 
 		const totals = database.getTotals('daily');
 		expect(totals.totals.count).toBe(1);
@@ -97,8 +97,8 @@ describe('WattsupUsageDatabase', () => {
 
 		// Execute both writes concurrently
 		await Promise.all([
-			database.addUsage(usageData1),
-			database.addUsage(usageData2)
+			database.addUsages(usageData1),
+			database.addUsages(usageData2)
 		]);
 
 		const totals = database.getTotals('daily');

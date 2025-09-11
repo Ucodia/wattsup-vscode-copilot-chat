@@ -37,7 +37,76 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 				return;
 			}
 			await vscode.workspace.fs.copy(csvPath, exportUri, { overwrite: true });
-			vscode.window.showInformationMessage(`Usage downloaded to ${exportUri.fsPath}`);
+			vscode.window.showInformationMessage(`[wattsup] Usage downloaded to ${exportUri.fsPath}`);
+		}));
+
+		// TODO: refactor this code which dudplicates computation logic from fetchAndNotify
+		this._register(vscode.commands.registerCommand('wattsup.recomputeEstimatedUsage', async () => {
+			try {
+				const allUsages = this._usageDatabase.getUsages();
+
+				if (allUsages.length === 0) {
+					vscode.window.showInformationMessage(`[wattsup] No usage data to recompute`);
+					return;
+				}
+
+				let skippedCount = 0;
+				const updatedUsages: Usage[] = [];
+
+				for (const usage of allUsages) {
+					try {
+						const provider = findProviderByModel(usage.model);
+						const estimationModel = findModel(provider!, usage.model);
+
+						if (!estimationModel) {
+							throw new Error(`Could not find model and provider for ${usage.model}`);
+						}
+
+						const impact = llmImpact(estimationModel.provider, estimationModel.name, usage.output_token, usage.latency);
+
+						const updatedUsage: Usage = {
+							...usage,
+							provider: estimationModel.provider,
+							estimation_model: estimationModel.name,
+							energy_min: impact.energy.min,
+							energy_max: impact.energy.max,
+							gwp_min: impact.gwp.min,
+							gwp_max: impact.gwp.max,
+							adpe_min: impact.adpe.min,
+							adpe_max: impact.adpe.max,
+							pe_min: impact.pe.min,
+							pe_max: impact.pe.max,
+						};
+
+						const hasChanged = usage.provider !== updatedUsage.provider ||
+							usage.estimation_model !== updatedUsage.estimation_model ||
+							usage.energy_min !== updatedUsage.energy_min ||
+							usage.energy_max !== updatedUsage.energy_max ||
+							usage.gwp_min !== updatedUsage.gwp_min ||
+							usage.gwp_max !== updatedUsage.gwp_max ||
+							usage.adpe_min !== updatedUsage.adpe_min ||
+							usage.adpe_max !== updatedUsage.adpe_max ||
+							usage.pe_min !== updatedUsage.pe_min ||
+							usage.pe_max !== updatedUsage.pe_max;
+
+						if (hasChanged) {
+							updatedUsages.push(updatedUsage);
+						}
+					} catch (error) {
+						console.warn(`[wattsup] Could not recompute usage for model ${usage.model}, skipping:`, error);
+						skippedCount++;
+					}
+				}
+
+				if (updatedUsages.length > 0) {
+					await this._usageDatabase.updateUsages(updatedUsages);
+				}
+
+				vscode.window.showInformationMessage(`[wattsup] Usage estimation was recomputed for ${updatedUsages.length} entries${skippedCount > 0 ? ` (${skippedCount} skipped)` : ''}`);
+			} catch (error) {
+				console.error('[wattsup] Error recomputing usage estimation:', error);
+				vscode.window.showErrorMessage(`[wattsup] Failed to recompute usage estimation: ${error}`);
+			}
 		}));
 	}
 
@@ -135,7 +204,7 @@ export class WattsupDashboard extends Disposable implements vscode.WebviewViewPr
 
 		if (formattedRequests.length > 0) {
 			try {
-				await this._usageDatabase.addUsage(formattedRequests);
+				await this._usageDatabase.addUsages(formattedRequests);
 			} catch (error) {
 				console.error('[wattsup] Error adding usage data to database', error);
 			}

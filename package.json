@@ -2034,6 +2034,10 @@
 			{
 				"command": "wattsup.exportUsage",
 				"title": "Wattsup: Export usage data to CSV"
+			},
+			{
+				"command": "wattsup.recomputeEstimatedUsage",
+				"title": "Wattsup: Recompute estimated usage"
 			}
 		],
 		"configuration": [
